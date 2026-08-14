@@ -278,6 +278,62 @@ tbody tr:hover td { background: var(--cinnabar-wash); }
   font-family: var(--font-serif); letter-spacing: .1em;
 }
 
+/* --- 名單卡片（欄位 <5 時雙欄呈現） --- */
+.card-list {
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 1rem;
+}
+.card-sort-row {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
+  padding: .5rem .75rem;
+  background: var(--surface); border: var(--hairline); border-radius: var(--radius);
+}
+.card-sort-label { font-size: .82rem; color: var(--ink-soft); font-weight: 500; }
+.card-sort-pill {
+  padding: .3rem .7rem; font-size: .8rem; font-weight: 500; color: var(--ink-soft);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  cursor: pointer; font-family: var(--font-sans); white-space: nowrap;
+  transition: all .15s;
+}
+.card-sort-pill:hover { border-color: var(--cinnabar); color: var(--cinnabar); background: var(--cinnabar-wash); }
+.card-sort-pill.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.name-card {
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: var(--radius);
+  padding: .95rem 1.1rem;
+  box-shadow: var(--shadow-line);
+  break-inside: avoid;
+}
+.name-card-title {
+  margin: 0 0 .55rem;
+  font-family: var(--font-serif);
+  font-size: 1.05rem; font-weight: 700;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: .4rem;
+  letter-spacing: .05em;
+}
+.name-card-item {
+  display: flex; gap: .6rem; margin: 0;
+  padding: .3rem 0;
+  font-size: .88rem;
+}
+.name-card-item + .name-card-item { border-top: 1px dashed var(--line); }
+.name-card-item dt {
+  flex: 0 0 30%; color: var(--ink-soft);
+  font-weight: 500; font-size: .8rem;
+  overflow-wrap: anywhere;
+}
+.name-card-item dd {
+  flex: 1; margin: 0; color: var(--ink);
+  overflow-wrap: anywhere; white-space: pre-wrap;
+}
+@media (max-width: 640px) {
+  .card-list { grid-template-columns: 1fr; }
+}
+
 /* --- 活動清單（後台） --- */
 .activity-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .6rem; }
 .activity-item {

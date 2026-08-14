@@ -28,6 +28,7 @@ const resultCountEl = document.getElementById('resultCount');
 const btnExportCsv = document.getElementById('btnExportCsv');
 const tableHeadEl = document.getElementById('tableHead');
 const tableBodyEl = document.getElementById('tableBody');
+const cardListEl = document.getElementById('cardList');
 const emptyStateEl = document.getElementById('emptyState');
 const tableWrapperEl = document.getElementById('tableWrapper');
 const lastUpdatedEl = document.getElementById('lastUpdated');
@@ -310,6 +311,28 @@ function renderTable() {
   const { fields, rows } = currentData;
   const filteredRows = getFilteredRows();
 
+  tableWrapperEl.style.display = 'none';
+  cardListEl.style.display = 'none';
+
+  if (filteredRows.length === 0) {
+    renderTableEmpty('此分類尚無資料');
+    return;
+  }
+  emptyStateEl.style.display = 'none';
+  resultCountEl.textContent = `共 ${filteredRows.length} 筆`;
+
+  // 欄位少於 5 欄 → 左右雙欄名單卡片；否則全寬表格
+  if (fields.length > 0 && fields.length < 5) {
+    renderCardList(fields, filteredRows);
+  } else {
+    renderDataTable(fields, filteredRows);
+  }
+}
+
+// 欄位多（>=5）：全寬表格
+function renderDataTable(fields, filteredRows) {
+  tableWrapperEl.style.display = 'block';
+
   tableHeadEl.innerHTML = '';
   const tr = document.createElement('tr');
   fields.forEach(f => {
@@ -334,14 +357,6 @@ function renderTable() {
   tableHeadEl.appendChild(tr);
 
   tableBodyEl.innerHTML = '';
-  if (filteredRows.length === 0) {
-    renderTableEmpty('此分類尚無資料');
-    return;
-  }
-  emptyStateEl.style.display = 'none';
-  tableWrapperEl.style.display = 'block';
-  resultCountEl.textContent = `共 ${filteredRows.length} 筆`;
-
   filteredRows.forEach(row => {
     const tr = document.createElement('tr');
     row.forEach(cell => {
@@ -350,6 +365,53 @@ function renderTable() {
       tr.appendChild(td);
     });
     tableBodyEl.appendChild(tr);
+  });
+}
+
+// 欄位少（<5）：左右雙欄名單卡片
+function renderCardList(fields, rows) {
+  cardListEl.style.display = 'grid';
+  cardListEl.innerHTML = '';
+
+  // 排序藥丸列
+  const sortRow = document.createElement('div');
+  sortRow.className = 'card-sort-row';
+  const sortLabel = document.createElement('span');
+  sortLabel.className = 'card-sort-label';
+  sortLabel.textContent = '排序：';
+  sortRow.appendChild(sortLabel);
+  fields.forEach(f => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'card-sort-pill' + (sortState.field === f ? ' active' : '');
+    const arrow = sortState.field === f ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    pill.textContent = f + arrow;
+    pill.title = '點擊排序';
+    pill.addEventListener('click', () => handleSort(f));
+    sortRow.appendChild(pill);
+  });
+  cardListEl.appendChild(sortRow);
+
+  rows.forEach(row => {
+    const card = document.createElement('article');
+    card.className = 'name-card';
+    // 第一個欄位作為卡片標題
+    const title = document.createElement('h3');
+    title.className = 'name-card-title';
+    title.textContent = row[0] ?? '';
+    card.appendChild(title);
+    fields.slice(1).forEach((f, i) => {
+      const item = document.createElement('dl');
+      item.className = 'name-card-item';
+      const dt = document.createElement('dt');
+      dt.textContent = f;
+      const dd = document.createElement('dd');
+      dd.textContent = row[i + 1] ?? '';
+      item.appendChild(dt);
+      item.appendChild(dd);
+      card.appendChild(item);
+    });
+    cardListEl.appendChild(card);
   });
 }
 
@@ -382,6 +444,7 @@ function renderTableEmpty(msg) {
   emptyStateEl.textContent = msg;
   emptyStateEl.style.display = 'block';
   tableWrapperEl.style.display = 'none';
+  cardListEl.style.display = 'none';
   resultCountEl.textContent = '';
   currentData = { fields: [], rows: [] };
   btnExportCsv.style.display = 'none';
@@ -484,6 +547,7 @@ function showError(msg) {
   emptyStateEl.textContent = msg;
   emptyStateEl.style.display = 'block';
   tableWrapperEl.style.display = 'none';
+  cardListEl.style.display = 'none';
   searchBarEl.style.display = 'none';
 }
 

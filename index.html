@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=8">
+  <link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body>
   <header class="site-header">
@@ -78,6 +78,8 @@
         <tbody id="tableBody"></tbody>
       </table>
     </section>
+    <!-- 名單卡片區（欄位少於 5 時使用） -->
+    <section class="card-list" id="cardList" style="display:none;" aria-live="polite"></section>
     <p class="empty-state" id="emptyState" style="display:none;">此分類暫無資料。</p>
 
     <!-- 頁尾 -->
@@ -87,7 +89,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=8"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/config.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>
