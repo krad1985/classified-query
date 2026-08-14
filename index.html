@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=9">
+  <link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
   <header class="site-header">
@@ -38,6 +38,28 @@
       </div>
       <button class="btn btn-secondary btn-sm" id="btnCopyLink" style="display:none;">複製連結</button>
     </div>
+
+    <!-- 活動金鑰 Modal（C 模式：需存取金鑰才能開啟活動） -->
+    <dialog id="keyModal" class="modal">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="keyModalTitle">此活動需存取金鑰</h3>
+          <button type="button" class="modal-close" id="keyModalClose" aria-label="關閉">&times;</button>
+        </header>
+        <div class="modal-body">
+          <p class="hint" id="keyModalDesc">請輸入系統提供的存取金鑰以開啟此活動。</p>
+          <div class="form-group">
+            <label for="activityKeyInput">存取金鑰</label>
+            <input type="password" id="activityKeyInput" placeholder="輸入金鑰" autocomplete="off">
+          </div>
+          <p class="hint" id="keyModalHint"></p>
+        </div>
+        <footer class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="keyModalCancel">取消</button>
+          <button type="button" class="btn btn-primary" id="keyModalConfirm">開啟活動</button>
+        </footer>
+      </div>
+    </dialog>
 
     <!-- 密碼鎖 Modal -->
     <dialog id="pwdModal" class="modal">
@@ -71,6 +93,9 @@
       </div>
     </div>
 
+    <!-- 分類摘要卡片（未選分類時顯示） -->
+    <section class="category-summary" id="categorySummary" style="display:none;" aria-live="polite"></section>
+
     <!-- 資料表格區 -->
     <section class="table-wrapper" id="tableWrapper" style="display:none;">
       <table id="dataTable" aria-live="polite">
@@ -89,7 +114,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=9"></script>
-  <script src="js/app.js?v=9"></script>
+  <script src="js/config.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
 </body>
 </html>

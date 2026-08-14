@@ -1,10 +1,14 @@
 ﻿/**
  * 分類查詢 - 管理後台邏輯
- * 負責：登入驗證、活動 CRUD、分類欄位、顯示欄位、分類密碼生成、密碼變更
+ * 負責：登入驗證（總管理員/單位管理員）、活動 CRUD、分類欄位、顯示欄位、
+ *       分類密碼生成、密碼變更、單位管理
  */
 
 // 狀態
 let adminPassword = '';
+let adminRole = 'admin';     // 'admin' | 'unit'
+let adminUnit = null;        // 單位管理員的單位 { id, name }
+let adminUnits = [];         // 總管理員可見的單位清單
 let activities = [];
 let availableFields = [];   // 從試算表讀取的欄位
 let categoryValues = [];    // 分類欄位的所有唯一值
@@ -20,16 +24,24 @@ const cssEsc = typeof CSS !== 'undefined' && CSS.escape ? s => CSS.escape(s) : s
 // DOM
 const loginSection = document.getElementById('loginSection');
 const adminPanel = document.getElementById('adminPanel');
+const loginRoleSelect = document.getElementById('loginRole');
+const loginUnitGroup = document.getElementById('loginUnitGroup');
+const loginUnitSelect = document.getElementById('loginUnit');
 const adminPwdInput = document.getElementById('adminPwd');
 const btnLogin = document.getElementById('btnLogin');
 const loginHint = document.getElementById('loginHint');
 
 const activityListEl = document.getElementById('activityList');
 const btnAddActivity = document.getElementById('btnAddActivity');
+const panelTitleEl = document.getElementById('panelTitle');
+const loginRoleHintEl = document.getElementById('loginRoleHint');
 const modal = document.getElementById('activityModal');
 const modalTitle = document.getElementById('modalTitle');
 const editActivityIdInput = document.getElementById('editActivityId');
 const actNameInput = document.getElementById('actName');
+const actUnitGroup = document.getElementById('actUnitGroup');
+const actUnitSelect = document.getElementById('actUnit');
+const actAccessKeyInput = document.getElementById('actAccessKey');
 const actSheetUrlInput = document.getElementById('actSheetUrl');
 const actSheetNameInput = document.getElementById('actSheetName');
 const actCategoryField = document.getElementById('actCategoryField');
@@ -49,10 +61,19 @@ const newPwdInput = document.getElementById('newPwd');
 const btnChangePwd = document.getElementById('btnChangePwd');
 const pwdHint = document.getElementById('pwdHint');
 
+const unitAdminCard = document.getElementById('unitAdminCard');
+const newUnitName = document.getElementById('newUnitName');
+const newUnitPwd = document.getElementById('newUnitPwd');
+const btnCreateUnit = document.getElementById('btnCreateUnit');
+const unitListEl = document.getElementById('unitList');
+const unitHintEl = document.getElementById('unitHint');
+const changePwdCard = document.getElementById('changePwdCard');
+
 // 初始化
 function init() {
   btnLogin.addEventListener('click', handleLogin);
   adminPwdInput.addEventListener('keydown', e => e.key === 'Enter' && handleLogin());
+  loginRoleSelect.addEventListener('change', handleLoginRoleChange);
 
   btnAddActivity.addEventListener('click', () => openModal());
   modalCloseBtn.addEventListener('click', () => closeModal());
@@ -62,20 +83,41 @@ function init() {
   btnSaveActivity.addEventListener('click', handleSaveActivity);
 
   btnChangePwd.addEventListener('click', handleChangePassword);
+  btnCreateUnit.addEventListener('click', handleCreateUnit);
+}
+
+// 登入角色切換
+function handleLoginRoleChange() {
+  const isUnit = loginRoleSelect.value === 'unit';
+  loginUnitGroup.style.display = isUnit ? 'block' : 'none';
+  adminPwdInput.placeholder = isUnit ? '單位管理密碼' : '總管理員密碼';
 }
 
 // 登入
 async function handleLogin() {
   const pwd = adminPwdInput.value.trim();
   if (!pwd) { showHint(loginHint, '請輸入密碼', true); return; }
+
+  const role = loginRoleSelect.value;
+  const unitId = role === 'unit' ? loginUnitSelect.value : '';
+  if (role === 'unit' && !unitId) { showHint(loginHint, '請選擇單位', true); return; }
+
   btnLogin.disabled = true; btnLogin.textContent = '驗證中…';
   try {
-    const res = await api('admin_login', { pwd });
+    let res;
+    if (role === 'unit') {
+      res = await api('unit_login', { unit: unitId, pwd });
+    } else {
+      res = await api('admin_login', { pwd });
+    }
     if (!res.ok) throw new Error(res.error || '密碼錯誤');
     adminPassword = pwd;
+    adminRole = role;
+    adminUnit = role === 'unit' ? res.unit : null;
     showHint(loginHint, res.firstTime ? '首次登入，密碼已設定' : '登入成功', false);
     loginSection.style.display = 'none';
     adminPanel.style.display = 'block';
+    applyRoleUI();
     await loadActivities();
   } catch (err) {
     showHint(loginHint, err.message, true);
@@ -84,19 +126,122 @@ async function handleLogin() {
   }
 }
 
+// 依登入角色調整 UI
+function applyRoleUI() {
+  const isAdmin = adminRole === 'admin';
+  panelTitleEl.textContent = isAdmin ? '活動管理' : `活動管理（${adminUnit ? adminUnit.name : ''}）`;
+  loginRoleHintEl.textContent = isAdmin
+    ? '總管理員：可管理所有活動與單位'
+    : `單位管理員：僅能管理「${adminUnit ? adminUnit.name : ''}」的活動`;
+  unitAdminCard.style.display = isAdmin ? 'block' : 'none';
+  actUnitGroup.style.display = isAdmin ? 'block' : 'none';
+  // 單位管理員無法自行變更密碼（由總管理員重設），隱藏變更卡片
+  changePwdCard.style.display = isAdmin ? 'block' : 'none';
+  if (!isAdmin) {
+    actUnitSelect.innerHTML = `<option value="${escapeHtml(adminUnit.id)}">${escapeHtml(adminUnit.name)}</option>`;
+  } else if (adminUnits.length > 0) {
+    actUnitSelect.innerHTML = '<option value="">（公開，所有訪客可見）</option>' +
+      adminUnits.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name)}</option>`).join('');
+  }
+}
+
 // 載入活動列表
 async function loadActivities() {
   try {
-    const res = await api('getConfig', { pwd: adminPassword });
+    const params = { pwd: adminPassword };
+    if (adminRole === 'unit') {
+      params.unit = adminUnit.id;
+      params.unitPwd = adminPassword;
+    }
+    const res = await api('getConfig', params);
     if (!res.ok) throw new Error(res.error || '載入失敗');
     activities = res.config?.activities || [];
+    adminUnits = res.config?.units || [];
     renderActivityList();
+    if (adminRole === 'admin') renderUnitList();
   } catch (err) {
     console.error('載入活動失敗:', err);
     activityListEl.innerHTML = `<li class="hint error">載入失敗：${err.message}</li>`;
   }
 }
 
+// 建立單位
+async function handleCreateUnit() {
+  const name = newUnitName.value.trim();
+  const unitPwd = newUnitPwd.value.trim();
+  if (!name) { showHint(unitHintEl, '請輸入單位名稱', true); return; }
+  if (unitPwd.length < 6) { showHint(unitHintEl, '單位管理密碼至少 6 碼', true); return; }
+  btnCreateUnit.disabled = true; btnCreateUnit.textContent = '建立中…';
+  try {
+    const res = await api('createUnit', { pwd: adminPassword, name, unitAdminPwd: unitPwd });
+    if (!res.ok) throw new Error(res.error);
+    newUnitName.value = ''; newUnitPwd.value = '';
+    showHint(unitHintEl, `單位「${res.name}」已建立，單位 Token：${res.token}`, false);
+    await loadActivities();
+  } catch (err) {
+    showHint(unitHintEl, err.message, true);
+  } finally {
+    btnCreateUnit.disabled = false; btnCreateUnit.textContent = '建立單位';
+  }
+}
+
+// 渲染單位清單
+function renderUnitList() {
+  if (!adminUnits || adminUnits.length === 0) {
+    unitListEl.innerHTML = '<li class="hint">尚無單位。</li>';
+    return;
+  }
+  unitListEl.innerHTML = adminUnits.map(u => `
+    <li class="activity-item">
+      <div class="activity-item-info">
+        <span class="activity-item-name">${escapeHtml(u.name)}</span>
+        <span class="activity-item-meta">
+          活動數: ${u.activityCount ?? 0}
+          ${u.token ? ` · Token: <code style="word-break:break-all;">${escapeHtml(u.token)}</code>` : ''}
+        </span>
+      </div>
+      <div class="activity-item-actions">
+        <button class="btn btn-secondary btn-sm" data-unit-pwd="${escapeHtml(u.id)}">重設密碼</button>
+        <button class="btn btn-danger btn-sm" data-unit-del="${escapeHtml(u.id)}">刪除</button>
+      </div>
+    </li>
+  `).join('');
+
+  unitListEl.querySelectorAll('[data-unit-pwd]').forEach(btn =>
+    btn.addEventListener('click', () => resetUnitPassword(btn.dataset.unitPwd))
+  );
+  unitListEl.querySelectorAll('[data-unit-del]').forEach(btn =>
+    btn.addEventListener('click', () => deleteUnit(btn.dataset.unitDel))
+  );
+}
+
+// 重設單位密碼
+async function resetUnitPassword(unitId) {
+  const newPwd = prompt('請輸入新的單位管理密碼（至少 6 碼）：');
+  if (!newPwd) return;
+  if (newPwd.length < 6) { alert('密碼至少 6 碼'); return; }
+  try {
+    const res = await api('setUnitPassword', { pwd: adminPassword, id: unitId, newPwd });
+    if (!res.ok) throw new Error(res.error);
+    alert('單位密碼已更新');
+  } catch (err) {
+    alert('重設失敗：' + err.message);
+  }
+}
+
+// 刪除單位
+async function deleteUnit(unitId) {
+  if (!confirm('確定要刪除這個單位嗎？僅能刪除無活動的單位。')) return;
+  try {
+    const res = await api('deleteUnit', { pwd: adminPassword, id: unitId });
+    if (!res.ok) throw new Error(res.error);
+    await loadActivities();
+  } catch (err) {
+    alert('刪除失敗：' + err.message);
+  }
+}
+
+// 渲染活動列表
 function renderActivityList() {
   if (activities.length === 0) {
     activityListEl.innerHTML = '<li class="hint">尚無活動，點擊「＋ 新增活動」開始</li>';
@@ -104,10 +249,17 @@ function renderActivityList() {
   }
   activityListEl.innerHTML = activities.map(act => {
     const lockedCount = Object.keys(act.protectedCategories || {}).length;
+    const unitName = (adminUnits.find(u => u.id === act.unit)?.name) || (adminRole === 'unit' && act.unit === adminUnit.id ? adminUnit.name : '');
+    const unitTag = act.unit
+      ? `<span class="tag">${escapeHtml(unitName || act.unit)}</span>`
+      : '<span class="tag tag-ghost">公開</span>';
+    const keyTag = act.accessKey
+      ? '<span class="tag">金鑰保護</span>'
+      : '';
     return `
     <li class="activity-item">
       <div class="activity-item-info">
-        <span class="activity-item-name">${escapeHtml(act.name)}</span>
+        <span class="activity-item-name">${escapeHtml(act.name)} ${unitTag} ${keyTag}</span>
         <span class="activity-item-meta">
           分類欄位: ${escapeHtml(act.categoryField || '（無）')} · 顯示欄位: ${(act.displayFields || []).join(', ') || '（無）'} · 鎖定分類: ${lockedCount} 個
         </span>
@@ -138,6 +290,11 @@ function openModal(actId = null) {
     if (act) {
       editActivityIdInput.value = act.id;
       actNameInput.value = act.name;
+      if (adminRole === 'admin') {
+        if (act.unit) actUnitSelect.value = act.unit;
+        else actUnitSelect.value = '';
+      }
+      actAccessKeyInput.value = act.accessKey || '';
       actSheetUrlInput.value = act.sheetUrl || '';
       actSheetNameInput.value = act.sheetName || '';
       pendingProtected = { ...(act.protectedCategories || {}) };
@@ -174,6 +331,8 @@ function closeModal() {
 function resetModalForm() {
   editActivityIdInput.value = '';
   actNameInput.value = '';
+  if (adminRole === 'admin') actUnitSelect.value = '';
+  actAccessKeyInput.value = '';
   actSheetUrlInput.value = '';
   actSheetNameInput.value = '';
   actCategoryField.innerHTML = '<option value="">（請先測試連線取得欄位）</option>';
@@ -197,7 +356,7 @@ async function handleTestConnection(silent = false) {
   if (!url) { showHint(connectionHint, '請先輸入試算表網址', true); return; }
   if (!silent) { btnTestConnection.disabled = true; btnTestConnection.textContent = '測試中…'; }
   try {
-    const res = await api('testConnection', { url, pwd: adminPassword });
+    const res = await api('testConnection', { url, ...authParams() });
     if (!res.ok) throw new Error(res.error);
     availableFields = res.fields || [];
     renderFieldOptions();
@@ -332,7 +491,7 @@ async function updateCategoryValues() {
   const sheetId = url ? extractSheetId(url) : null;
   if (!sheetId) return;
   try {
-    const res = await api('getCategoryValues', { url, field, pwd: adminPassword });
+    const res = await api('getCategoryValues', { url, field, ...authParams() });
     if (res.ok) categoryValues = res.values || [];
   } catch (err) {
     // 若 action 未實作或失敗，改用分類密碼既有值 + 無清單
@@ -398,6 +557,12 @@ function copyCategoryLink(cat) {
   });
 }
 
+// 依登入角色回傳後端權限參數
+function authParams() {
+  if (adminRole === 'unit') return { unit: adminUnit.id, unitPwd: adminPassword };
+  return { pwd: adminPassword };
+}
+
 // 生成分類密碼（呼叫後端產生，系統給定）
 async function generatePasswordFor(cat) {
   const actId = editActivityIdInput.value || 'NEW';
@@ -408,7 +573,7 @@ async function generatePasswordFor(cat) {
     if (actId === 'NEW') {
       pendingProtected[cat] = genLocalPassword();
     } else {
-      const res = await api('generateCategoryPassword', { act: actId, cat, pwd: adminPassword });
+      const res = await api('generateCategoryPassword', { act: actId, cat, ...authParams() });
       if (!res.ok) throw new Error(res.error);
       pendingProtected[cat] = res.password;
       // 同步更新活動列表
@@ -461,9 +626,12 @@ async function handleSaveActivity() {
       displayFields,
       protectedCategories: pendingProtected,
       defaultSortField: actDefaultSortField.value || '',
-      defaultSortDir: actDefaultSortDir.value === 'desc' ? 'desc' : 'asc'
+      defaultSortDir: actDefaultSortDir.value === 'desc' ? 'desc' : 'asc',
+      accessKey: actAccessKeyInput.value.trim() || ''
     };
-    const res = await api('saveActivity', { pwd: adminPassword, data: JSON.stringify(data) });
+    // 總管理員可指定所屬單位
+    if (adminRole === 'admin') data.unit = actUnitSelect.value;
+    const res = await api('saveActivity', { ...authParams(), data: JSON.stringify(data) });
     if (!res.ok) throw new Error(res.error);
     closeModal();
     await loadActivities();
@@ -478,7 +646,7 @@ async function handleSaveActivity() {
 async function handleDelete(id) {
   if (!confirm('確定要刪除這個活動嗎？此操作無法復原。')) return;
   try {
-    const res = await api('deleteActivity', { pwd: adminPassword, id });
+    const res = await api('deleteActivity', { ...authParams(), id });
     if (!res.ok) throw new Error(res.error);
     await loadActivities();
   } catch (err) {

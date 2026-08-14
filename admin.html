@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=9">
+  <link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
   <header class="site-header">
@@ -27,8 +27,20 @@
     <section class="card" id="loginSection">
       <h2>管理員登入</h2>
       <div class="form-group">
-        <label for="adminPwd">管理密碼</label>
-        <input type="password" id="adminPwd" placeholder="首次登入將設定為管理密碼" autocomplete="current-password">
+        <label for="loginRole">登入身分</label>
+        <select id="loginRole">
+          <option value="admin">總管理員</option>
+          <option value="unit">單位管理員</option>
+        </select>
+      </div>
+      <div class="form-group" id="loginUnitGroup" style="display:none;">
+        <label for="loginUnit">單位 ID</label>
+        <input type="text" id="loginUnit" placeholder="由總管理員建立單位時提供">
+        <p class="hint">單位管理員請向總管理員索取您的單位 ID。</p>
+      </div>
+      <div class="form-group">
+        <label for="adminPwd">密碼</label>
+        <input type="password" id="adminPwd" placeholder="總管理員或單位管理密碼" autocomplete="current-password">
       </div>
       <button class="btn btn-primary" id="btnLogin">登入</button>
       <p class="hint" id="loginHint"></p>
@@ -36,13 +48,35 @@
 
     <!-- 管理介面（登入後顯示）-->
     <section id="adminPanel" style="display:none;">
-      <!-- 活動清單 -->
-      <div class="card">
+      <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-header">
-          <h2>活動管理</h2>
+          <h2 id="panelTitle">活動管理</h2>
           <button class="btn btn-secondary" id="btnAddActivity">＋ 新增活動</button>
         </div>
+        <p class="hint" id="loginRoleHint"></p>
         <ul class="activity-list" id="activityList"></ul>
+      </div>
+
+      <!-- 單位管理（僅總管理員）-->
+      <div class="card" id="unitAdminCard" style="display:none; margin-top:1.5rem;">
+        <div class="card-header">
+          <h2>單位管理</h2>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newUnitName">單位名稱</label>
+            <input type="text" id="newUnitName" placeholder="例如：總部">
+          </div>
+          <div class="form-group">
+            <label for="newUnitPwd">單位管理密碼（至少 6 碼）</label>
+            <input type="password" id="newUnitPwd" minlength="6" placeholder="單位管理員登入用">
+          </div>
+          <div class="form-group">
+            <button class="btn btn-primary" id="btnCreateUnit" style="margin-top:1.7rem;">建立單位</button>
+          </div>
+        </div>
+        <ul class="activity-list" id="unitList"></ul>
+        <p class="hint" id="unitHint"></p>
       </div>
 
       <!-- 新增/編輯活動 Modal -->
@@ -57,6 +91,18 @@
             <div class="form-group">
               <label for="actName">活動名稱 <span class="required">*</span></label>
               <input type="text" id="actName" placeholder="例如：2026 秋季報名" required>
+            </div>
+            <div class="form-group" id="actUnitGroup" style="display:none;">
+              <label for="actUnit">所屬單位</label>
+              <select id="actUnit">
+                <option value="">（公開，所有訪客可見）</option>
+              </select>
+              <p class="hint">選擇後僅該單位（含單位 Token 的網址）可看到此活動。</p>
+            </div>
+            <div class="form-group">
+              <label for="actAccessKey">存取金鑰（選填）</label>
+              <input type="text" id="actAccessKey" placeholder="留空＝公開（僅顯示隔離）；填寫＝需金鑰才能開啟">
+              <p class="hint">留空為 A 模式（僅單位隔離）；填寫後訪客開啟此活動需輸入金鑰（C 模式）。</p>
             </div>
             <div class="form-group">
               <label for="actSheetUrl">Google Sheets 網址 <span class="required">*</span></label>
@@ -115,8 +161,8 @@
       </dialog>
 
       <!-- 密碼變更 -->
-      <div class="card" style="margin-top:1.5rem;">
-        <h2>變更管理密碼</h2>
+      <div class="card" id="changePwdCard" style="margin-top:1.5rem;">
+        <h2 id="changePwdTitle">變更管理密碼</h2>
         <div class="form-row">
           <div class="form-group">
             <label for="oldPwd">舊密碼</label>
@@ -136,7 +182,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=9"></script>
-  <script src="js/admin.js?v=9"></script>
+  <script src="js/config.js?v=10"></script>
+  <script src="js/admin.js?v=10"></script>
 </body>
 </html>

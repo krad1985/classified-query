@@ -278,6 +278,35 @@ tbody tr:hover td { background: var(--cinnabar-wash); }
   font-family: var(--font-serif); letter-spacing: .1em;
 }
 
+/* --- 分類摘要卡片（未選分類時顯示） --- */
+.category-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .9rem;
+  padding: .2rem 0 1.2rem;
+}
+.summary-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: .3rem;
+  padding: 1rem 1.15rem;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-line);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: border-color .15s, box-shadow .15s, transform .1s;
+}
+.summary-card:hover { border-color: var(--cinnabar); box-shadow: 0 3px 10px rgba(43,39,35,.12); transform: translateY(-2px); }
+.summary-card-name { font-size: 1rem; font-weight: 700; color: var(--ink); letter-spacing: .04em; }
+.summary-card-count { font-size: .82rem; color: var(--ink-soft); font-weight: 500; }
+.summary-card-lock { font-size: .78rem; color: var(--cinnabar); font-weight: 500; }
+.summary-card.locked { border-left: 3px solid var(--cinnabar); }
+.summary-card.unlocked { border-left: 3px solid var(--jade); }
+@media (max-width: 640px) {
+  .category-summary { grid-template-columns: 1fr; }
+}
+
 /* --- 名單卡片（欄位 <5 時雙欄呈現） --- */
 .card-list {
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -336,6 +365,13 @@ tbody tr:hover td { background: var(--cinnabar-wash); }
 
 /* --- 活動清單（後台） --- */
 .activity-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .6rem; }
+.tag {
+  display: inline-block; padding: .1rem .5rem; margin-left: .3rem;
+  font-size: .72rem; font-weight: 500; color: var(--cinnabar);
+  background: var(--cinnabar-wash); border: 1px solid rgba(168,64,40,.25);
+  border-radius: 999px; vertical-align: middle;
+}
+.tag-ghost { color: var(--ink-soft); background: transparent; border-color: var(--line); }
 .activity-item {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   padding: .8rem 1rem;

@@ -26,7 +26,7 @@ function doGet(e) {
   try {
     switch (action) {
       case 'listActivities':
-        result = handleListActivities();
+        result = handleListActivities(e.parameter);
         break;
       case 'getActivityInfo':
         result = handleGetActivityInfo(e.parameter);
@@ -43,6 +43,9 @@ function doGet(e) {
       case 'admin_login':
         result = handleAdminLogin(e.parameter);
         break;
+      case 'unit_login':
+        result = handleUnitLogin(e.parameter);
+        break;
       case 'getConfig':
         result = handleGetConfig(e.parameter);
         break;
@@ -58,6 +61,18 @@ function doGet(e) {
       case 'changePassword':
         result = handleChangePassword(e.parameter);
         break;
+      case 'createUnit':
+        result = handleCreateUnit(e.parameter);
+        break;
+      case 'listUnits':
+        result = handleListUnits(e.parameter);
+        break;
+      case 'deleteUnit':
+        result = handleDeleteUnit(e.parameter);
+        break;
+      case 'setUnitPassword':
+        result = handleSetUnitPassword(e.parameter);
+        break;
       default:
         result = { ok: false, error: '未知的 action: ' + action };
     }
@@ -70,31 +85,75 @@ function doGet(e) {
 }
 
 /**
- * 取得所有活動基本資訊（供查詢頁分頁籤用）
+ * 取得活動列表
+ * - 無 unit 參數：只回傳「公開」活動（unit 為空），token 為全域 publicToken
+ * - 有 unit 參數：需驗證 unitToken（單位專屬），回傳該單位活動
  */
-function handleListActivities() {
-  const config = getActivitiesConfig();
-  const list = config.activities.map(a => ({ id: a.id, name: a.name }));
-  return { ok: true, activities: list, publicToken: config.publicToken || '' };
+function handleListActivities(params) {
+  const index = getConfigIndex();
+  const unitId = params.unit || '';
+  const unitToken = params.unitToken || '';
+
+  if (!unitId) {
+    // 公開活動
+    const activities = index.activityIds
+      .map(id => getActivityById(id))
+      .filter(a => a && !a.unit)
+      .map(a => ({ id: a.id, name: a.name }));
+    return { ok: true, activities, publicToken: index.publicToken || '' };
+  }
+
+  // 單位活動：驗證單位專屬 token
+  const unit = getUnitById(unitId);
+  if (!unit) return { ok: false, error: '找不到該單位' };
+  if (!unit.token || unit.token !== unitToken) {
+    return { ok: false, code: 'NEED_UNIT_TOKEN', error: '單位 Token 驗證失敗' };
+  }
+  const activities = index.activityIds
+    .map(id => getActivityById(id))
+    .filter(a => a && a.unit === unitId)
+    .map(a => ({ id: a.id, name: a.name }));
+  return { ok: true, activities, publicToken: unit.token || '' };
 }
 
 /**
  * 取得單一活動的資訊：顯示欄位、分類清單（含鎖定標記，但不含密碼）
  */
-function handleGetActivityInfo(params) {
-  const actId = params.act;
+/**
+ * 活動存取驗證：
+ * 1. token 必須匹配（全域公開 token 或單位 token）
+ * 2. 活動 accessKey 非空白時，key 必須相符（否則回傳 NEED_KEY）
+ * 回傳 { ok, error, code, activity } 或拋出
+ */
+function authorizeActivity(params, activity) {
+  const index = getConfigIndex();
   const token = params.token || '';
+  const key = params.key || '';
 
-  if (!actId) return { ok: false, error: '缺少活動 ID' };
-
-  const config = getActivitiesConfig();
-  const activity = config.activities.find(a => a.id === actId);
-  if (!activity) return { ok: false, error: '找不到該活動' };
-
-  const validToken = config.publicToken || '';
+  // token 驗證：全域 or 該單位 token
+  const unitToken = activity.unit ? (getUnitById(activity.unit)?.token || '') : '';
+  const validToken = activity.unit ? unitToken : (index.publicToken || '');
   if (validToken && token !== validToken) {
     return { ok: false, error: 'Token 驗證失敗' };
   }
+
+  // 活動金鑰：accessKey 非空白時需 key 相符（C 模式）；空白則僅顯示隔離（A 模式）
+  const accessKey = activity.accessKey || '';
+  if (accessKey && key !== accessKey) {
+    return { ok: false, code: 'NEED_KEY', error: '此活動需輸入存取金鑰' };
+  }
+  return { ok: true, activity };
+}
+
+function handleGetActivityInfo(params) {
+  const actId = params.act;
+  if (!actId) return { ok: false, error: '缺少活動 ID' };
+
+  const activity = getActivityById(actId);
+  if (!activity) return { ok: false, error: '找不到該活動' };
+
+  const auth = authorizeActivity(params, activity);
+  if (!auth.ok) return { ok: false, code: auth.code, error: auth.error };
 
   // 讀取試算表取得分類清單
   const data = readSpreadsheetData(activity);
@@ -111,7 +170,8 @@ function handleGetActivityInfo(params) {
       categoryField: activity.categoryField || '',
       displayFields: activity.displayFields || [],
       defaultSortField: activity.defaultSortField || '',
-      defaultSortDir: activity.defaultSortDir || 'asc'
+      defaultSortDir: activity.defaultSortDir || 'asc',
+      unit: activity.unit || ''
     },
     categories: categories.map(c => ({
       name: c.name,
@@ -127,20 +187,16 @@ function handleGetActivityInfo(params) {
  */
 function handleGetList(params) {
   const actId = params.act;
-  const token = params.token || '';
   const cat = params.cat || '';
   const pwd = params.pwd || '';
 
   if (!actId) return { ok: false, error: '缺少活動 ID' };
 
-  const config = getActivitiesConfig();
-  const activity = config.activities.find(a => a.id === actId);
+  const activity = getActivityById(actId);
   if (!activity) return { ok: false, error: '找不到該活動' };
 
-  const validToken = config.publicToken || '';
-  if (validToken && token !== validToken) {
-    return { ok: false, error: 'Token 驗證失敗' };
-  }
+  const auth = authorizeActivity(params, activity);
+  if (!auth.ok) return { ok: false, code: auth.code, error: auth.error };
 
   const categoryField = activity.categoryField;
   const protectedSet = activity.protectedCategories || {};
@@ -196,13 +252,27 @@ function handleGetList(params) {
 }
 
 /**
+ * 後台權限驗證：回傳 { role: 'admin' } 或 { role: 'unit', unit }
+ * 優先判別單位管理員（unit + unitPwd），其次總管理員（pwd）
+ */
+function resolveAdminAuth(params) {
+  if (params.unit && params.unitPwd) {
+    const unit = getUnitById(params.unit);
+    if (unit && verifyUnitAdminPassword(unit, params.unitPwd)) {
+      return { role: 'unit', unit };
+    }
+    return null;
+  }
+  if (verifyAdminPassword(params.pwd)) return { role: 'admin' };
+  return null;
+}
+
+/**
  * 測試試算表連線並回傳欄位清單（含分類欄位建議用下拉）
  */
 function handleTestConnection(params) {
   const url = params.url;
-  const pwd = params.pwd || '';
-
-  if (!verifyAdminPassword(pwd)) {
+  if (!resolveAdminAuth(params)) {
     return { ok: false, error: '管理密碼錯誤' };
   }
   if (!url) return { ok: false, error: '缺少試算表網址' };
@@ -225,10 +295,10 @@ function handleTestConnection(params) {
 }
 
 /**
- * 取得分類欄位的唯一值（需管理密碼）
+ * 取得分類欄位的唯一值（需管理權限）
  */
 function handleGetCategoryValues(params) {
-  if (!verifyAdminPassword(params.pwd)) {
+  if (!resolveAdminAuth(params)) {
     return { ok: false, error: '管理密碼錯誤' };
   }
   const url = params.url;
@@ -285,78 +355,260 @@ function handleAdminLogin(params) {
 }
 
 /**
- * 取得完整設定（需管理密碼）
+ * 單位管理員登入驗證
+ */
+function handleUnitLogin(params) {
+  const unitId = params.unit || '';
+  const pwd = params.pwd || '';
+  if (!unitId) return { ok: false, error: '缺少單位 ID' };
+  const unit = getUnitById(unitId);
+  if (!unit) return { ok: false, error: '找不到該單位' };
+  if (!verifyUnitAdminPassword(unit, pwd)) return { ok: false, error: '單位管理密碼錯誤' };
+  return { ok: true, unit: { id: unit.id, name: unit.name } };
+}
+
+/**
+ * 驗證單位管理員密碼
+ */
+function verifyUnitAdminPassword(unit, pwd) {
+  if (!unit || !unit.adminHash || !unit.adminSalt) return false;
+  return verifyPassword(pwd || '', unit.adminHash, unit.adminSalt);
+}
+
+/**
+ * 取得設定（依權限）
+ * - 總管理員：所有活動 + 所有單位 + 全域 publicToken
+ * - 單位管理員：該單位活動（不洩漏其他單位）
  */
 function handleGetConfig(params) {
+  // 單位管理員優先（unitPwd 需配對 unit）
+  if (params.unit && params.unitPwd) {
+    const unit = getUnitById(params.unit);
+    if (!unit) return { ok: false, error: '找不到該單位' };
+    if (!verifyUnitAdminPassword(unit, params.unitPwd)) return { ok: false, error: '單位管理密碼錯誤' };
+    const activities = getAllActivities().filter(a => a.unit === unit.id);
+    return {
+      ok: true,
+      role: 'unit',
+      unit: { id: unit.id, name: unit.name },
+      config: { activities }
+    };
+  }
+
   if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
-  const config = getActivitiesConfig();
+
+  const index = getConfigIndex();
+  const units = index.units.map(id => getUnitById(id)).filter(u => u);
   return {
     ok: true,
-    config: { activities: config.activities, publicToken: config.publicToken || '' }
+    role: 'admin',
+    config: {
+      activities: getAllActivities(),
+      units: units.map(u => ({ id: u.id, name: u.name })),
+      publicToken: index.publicToken || ''
+    }
   };
 }
 
 /**
- * 儲存/更新活動設定（需管理密碼）
+ * 建立單位（總管理員限定）
+ * 單位管理員密碼由總管理員設定；產生單位專屬 token 供查詢頁隔離驗證
+ */
+function handleCreateUnit(params) {
+  if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
+  const name = (params.name || '').trim();
+  const unitAdminPwd = params.unitAdminPwd || '';
+  if (!name) return { ok: false, error: '請輸入單位名稱' };
+  if (unitAdminPwd.length < 6) return { ok: false, error: '單位管理密碼至少 6 碼' };
+
+  const unitId = 'unit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const salt = generateSalt();
+  const unit = {
+    id: unitId,
+    name,
+    adminHash: hashPassword(unitAdminPwd, salt),
+    adminSalt: salt,
+    token: generatePublicToken()
+  };
+  saveUnitRecord(unit);
+
+  const index = getConfigIndex();
+  index.units.push(unitId);
+  saveConfigIndex(index);
+
+  return { ok: true, id: unitId, name, token: unit.token };
+}
+
+/**
+ * 列出所有單位（總管理員限定）
+ */
+function handleListUnits(params) {
+  if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
+  const index = getConfigIndex();
+  const units = index.units.map(id => getUnitById(id)).filter(u => u);
+  return {
+    ok: true,
+    units: units.map(u => ({ id: u.id, name: u.name, token: u.token || '', activityCount: getAllActivities().filter(a => a.unit === u.id).length }))
+  };
+}
+
+/**
+ * 刪除單位（總管理員限定）——僅允許刪除無活動的單位
+ */
+function handleDeleteUnit(params) {
+  if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
+  const unitId = params.id;
+  if (!unitId) return { ok: false, error: '缺少單位 ID' };
+  const unit = getUnitById(unitId);
+  if (!unit) return { ok: false, error: '找不到該單位' };
+
+  const hasActivities = getAllActivities().some(a => a.unit === unitId);
+  if (hasActivities) return { ok: false, error: '該單位尚有活動，請先刪除或移轉活動' };
+
+  deleteUnitRecord(unitId);
+  const index = getConfigIndex();
+  index.units = index.units.filter(u => u !== unitId);
+  saveConfigIndex(index);
+  return { ok: true };
+}
+
+/**
+ * 重設單位管理密碼（總管理員限定）
+ */
+function handleSetUnitPassword(params) {
+  if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
+  const unitId = params.id;
+  const newPwd = params.newPwd || '';
+  if (!unitId) return { ok: false, error: '缺少單位 ID' };
+  if (newPwd.length < 6) return { ok: false, error: '新密碼至少 6 碼' };
+
+  const unit = getUnitById(unitId);
+  if (!unit) return { ok: false, error: '找不到該單位' };
+
+  const salt = generateSalt();
+  unit.adminHash = hashPassword(newPwd, salt);
+  unit.adminSalt = salt;
+  saveUnitRecord(unit);
+  return { ok: true };
+}
+
+/**
+ * 儲存/更新活動設定
+ * - 總管理員：可設任意 unit / 金鑰
+ * - 單位管理員：僅能存取自己單位的活動；unit 鎖定為自己的單位
  */
 function handleSaveActivity(params) {
+  // 單位管理員優先
+  if (params.unit && params.unitPwd) {
+    const unit = getUnitById(params.unit);
+    if (!unit) return { ok: false, error: '找不到該單位' };
+    if (!verifyUnitAdminPassword(unit, params.unitPwd)) return { ok: false, error: '單位管理密碼錯誤' };
+
+    const activityData = JSON.parse(params.data || '{}');
+    // 鎖定 unit 為自己的單位
+    activityData.unit = unit.id;
+    // 單位管理員不能設定存取金鑰以外的欄位限制？仍可設 accessKey（單位的公開金鑰由總管理員控管）
+    activityData.protectedCategories = activityData.protectedCategories || {};
+    activityData.cacheVersion = (activityData.cacheVersion || 0) + 1;
+
+    if (!activityData.id) {
+      activityData.id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      saveActivityRecord(activityData);
+      const index = getConfigIndex();
+      index.activityIds.push(activityData.id);
+      saveConfigIndex(index);
+    } else {
+      // 更新：確保編輯的是自己單位的活動
+      const existing = getActivityById(activityData.id);
+      if (!existing) return { ok: false, error: '找不到該活動' };
+      if (existing.unit !== unit.id) return { ok: false, error: '不可編輯其他單位的活動' };
+      saveActivityRecord(activityData);
+    }
+    return { ok: true, id: activityData.id };
+  }
+
   if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
 
-  const config = getActivitiesConfig();
   const activityData = JSON.parse(params.data || '{}');
-
-  // 確保分類密碼欄位存在
   activityData.protectedCategories = activityData.protectedCategories || {};
-  // 遞增快取世代，使舊快取失效
   activityData.cacheVersion = (activityData.cacheVersion || 0) + 1;
 
   if (!activityData.id) {
     activityData.id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    config.activities.push(activityData);
+    saveActivityRecord(activityData);
+    const index = getConfigIndex();
+    index.activityIds.push(activityData.id);
+    saveConfigIndex(index);
   } else {
-    const idx = config.activities.findIndex(a => a.id === activityData.id);
-    if (idx >= 0) config.activities[idx] = activityData;
+    saveActivityRecord(activityData);
   }
 
-  saveActivitiesConfig(config);
   return { ok: true, id: activityData.id };
 }
 
 /**
- * 刪除活動（需管理密碼）
+ * 刪除活動
+ * - 總管理員：可刪任何
+ * - 單位管理員：僅能刪自己單位的活動
  */
 function handleDeleteActivity(params) {
+  if (params.unit && params.unitPwd) {
+    const unit = getUnitById(params.unit);
+    if (!unit) return { ok: false, error: '找不到該單位' };
+    if (!verifyUnitAdminPassword(unit, params.unitPwd)) return { ok: false, error: '單位管理密碼錯誤' };
+
+    const id = params.id;
+    if (!id) return { ok: false, error: '缺少活動 ID' };
+    const existing = getActivityById(id);
+    if (!existing) return { ok: false, error: '找不到該活動' };
+    if (existing.unit !== unit.id) return { ok: false, error: '不可刪除其他單位的活動' };
+
+    deleteActivityRecord(id);
+    const index = getConfigIndex();
+    index.activityIds = index.activityIds.filter(a => a !== id);
+    saveConfigIndex(index);
+    return { ok: true };
+  }
+
   if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
 
   const id = params.id;
   if (!id) return { ok: false, error: '缺少活動 ID' };
 
-  const config = getActivitiesConfig();
-  config.activities = config.activities.filter(a => a.id !== id);
-  saveActivitiesConfig(config);
+  deleteActivityRecord(id);
+  const index = getConfigIndex();
+  index.activityIds = index.activityIds.filter(a => a !== id);
+  saveConfigIndex(index);
   return { ok: true };
 }
 
 /**
- * 生成分類密碼（需管理密碼）並回存
+ * 生成分類密碼（總管理員或該單位管理員）並回存
  */
 function handleGenerateCategoryPassword(params) {
-  if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
-
   const actId = params.act;
   const cat = params.cat;
   if (!actId || !cat) return { ok: false, error: '缺少活動或分類' };
 
-  const config = getActivitiesConfig();
-  const activity = config.activities.find(a => a.id === actId);
+  const activity = getActivityById(actId);
   if (!activity) return { ok: false, error: '找不到該活動' };
+
+  // 單位管理員：驗證屬於自己單位
+  if (params.unit && params.unitPwd) {
+    const unit = getUnitById(params.unit);
+    if (!unit) return { ok: false, error: '找不到該單位' };
+    if (!verifyUnitAdminPassword(unit, params.unitPwd)) return { ok: false, error: '單位管理密碼錯誤' };
+    if (activity.unit !== unit.id) return { ok: false, error: '不可編輯其他單位的活動' };
+  } else if (!verifyAdminPassword(params.pwd)) {
+    return { ok: false, error: '管理密碼錯誤' };
+  }
 
   activity.protectedCategories = activity.protectedCategories || {};
   const password = generateCategoryPassword();
   activity.protectedCategories[cat] = password;
   activity.cacheVersion = (activity.cacheVersion || 0) + 1;
 
-  saveActivitiesConfig(config);
+  saveActivityRecord(activity);
   return { ok: true, password, cat };
 }
 
@@ -379,16 +631,120 @@ function handleChangePassword(params) {
 
 /* ===== 內部工具函式 ===== */
 
-function getActivitiesConfig() {
+// 分 key 儲存架構：
+//   ACTIVITIES_INDEX  → { publicToken, units: [unitId], activityIds: [actId] }   (索引，很小)
+//   ACT_<id>          → 單一活動完整設定（欄位/分類鎖/金鑰/unit）
+//   UNIT_<id>         → 單一單位：{ id, name, adminHash, adminSalt }
+// 避免單一 Script Property 超過 9KB / 總量 500KB，且讀寫只動到單一活動
+
+function getConfigIndex() {
   const props = PropertiesService.getScriptProperties();
   const json = props.getProperty(PROP_ACTIVITIES);
-  if (json) return JSON.parse(json);
-  return { activities: [], publicToken: generatePublicToken() };
+  if (json) {
+    // 舊格式（單一 property 存整個 config）→ 遷移為分 key 儲存
+    try {
+      const legacy = JSON.parse(json);
+      if (legacy.activities || legacy.publicToken) {
+        const index = { publicToken: legacy.publicToken || '', units: [], activityIds: [] };
+        (legacy.activities || []).forEach(a => {
+          if (a.id) {
+            props.setProperty('ACT_' + a.id, JSON.stringify(a));
+            index.activityIds.push(a.id);
+          }
+        });
+        // 移除舊 property，避免重複遷移
+        props.deleteProperty(PROP_ACTIVITIES);
+        props.setProperty('ACTIVITIES_INDEX', JSON.stringify(index));
+        return index;
+      }
+    } catch (e) {
+      // 忽略解析錯誤，走新結構
+    }
+  }
+  const idxJson = props.getProperty('ACTIVITIES_INDEX');
+  if (idxJson) {
+    try { return JSON.parse(idxJson); } catch (e) { /* 破損則重建 */ }
+  }
+  return { publicToken: generatePublicToken(), units: [], activityIds: [] };
+}
+
+function saveConfigIndex(index) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('ACTIVITIES_INDEX', JSON.stringify(index));
+}
+
+function getActivityById(actId) {
+  const props = PropertiesService.getScriptProperties();
+  const json = props.getProperty('ACT_' + actId);
+  if (!json) return null;
+  try { return JSON.parse(json); } catch (e) { return null; }
+}
+
+function saveActivityRecord(act) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('ACT_' + act.id, JSON.stringify(act));
+}
+
+function deleteActivityRecord(actId) {
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty('ACT_' + actId);
+}
+
+function getUnitById(unitId) {
+  const props = PropertiesService.getScriptProperties();
+  const json = props.getProperty('UNIT_' + unitId);
+  if (!json) return null;
+  try { return JSON.parse(json); } catch (e) { return null; }
+}
+
+function saveUnitRecord(unit) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('UNIT_' + unit.id, JSON.stringify(unit));
+}
+
+function deleteUnitRecord(unitId) {
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty('UNIT_' + unitId);
+}
+
+// 取得所有活動（依索引）
+function getAllActivities() {
+  const index = getConfigIndex();
+  return index.activityIds
+    .map(id => getActivityById(id))
+    .filter(a => a);
+}
+
+// 向後相容：listActivities 需回傳 { ok, activities, publicToken }
+function getActivitiesConfig() {
+  const index = getConfigIndex();
+  return {
+    activities: getAllActivities(),
+    publicToken: index.publicToken,
+    units: index.units.map(id => getUnitById(id)).filter(u => u)
+  };
 }
 
 function saveActivitiesConfig(config) {
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty(PROP_ACTIVITIES, JSON.stringify(config));
+  // 向後相容寫入：拆解為分 key 儲存
+  const index = getConfigIndex();
+  const newIds = [];
+  (config.activities || []).forEach(a => {
+    if (!a.id) return;
+    saveActivityRecord(a);
+    newIds.push(a.id);
+  });
+  index.activityIds = newIds;
+  if (config.publicToken) index.publicToken = config.publicToken;
+  // units
+  const unitIds = [];
+  (config.units || []).forEach(u => {
+    if (!u.id) return;
+    saveUnitRecord(u);
+    unitIds.push(u.id);
+  });
+  index.units = unitIds;
+  saveConfigIndex(index);
 }
 
 function generatePublicToken() {

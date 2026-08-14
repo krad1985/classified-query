@@ -12,6 +12,12 @@ let currentCategory = '';       // '' 表示全部（僅未鎖定）
 let currentData = { fields: [], rows: [] };
 let publicToken = null;
 
+// 單位隔離參數（來自 URL ?unit=&unitToken= 或 config.js UNIT）
+let activeUnit = '';
+let activeUnitToken = '';
+// 活動金鑰解鎖狀態（session）：activityId -> key
+const unlockedActivityKeys = new Map();
+
 // 已解鎖的分類密碼（session）
 const unlockedCats = new Map(); // name -> password
 
@@ -31,12 +37,18 @@ const tableBodyEl = document.getElementById('tableBody');
 const cardListEl = document.getElementById('cardList');
 const emptyStateEl = document.getElementById('emptyState');
 const tableWrapperEl = document.getElementById('tableWrapper');
+const categorySummaryEl = document.getElementById('categorySummary');
 const lastUpdatedEl = document.getElementById('lastUpdated');
 const pwdModal = document.getElementById('pwdModal');
 const pwdModalTitle = document.getElementById('pwdModalTitle');
 const pwdModalDesc = document.getElementById('pwdModalDesc');
 const pwdModalHint = document.getElementById('pwdModalHint');
 const categoryPwdInput = document.getElementById('categoryPwdInput');
+const keyModal = document.getElementById('keyModal');
+const keyModalTitle = document.getElementById('keyModalTitle');
+const keyModalDesc = document.getElementById('keyModalDesc');
+const keyModalHint = document.getElementById('keyModalHint');
+const activityKeyInput = document.getElementById('activityKeyInput');
 
 // 分類搜尋關鍵字（本地過濾，不影響後端）
 let categoryFilter = '';
@@ -54,6 +66,14 @@ async function init() {
     const params = new URLSearchParams(location.search);
     const urlAct = params.get('act');
     const urlCat = params.get('cat');
+    const urlKey = params.get('key'); // 活動金鑰（選擇性，C 模式）
+
+    // 單位參數：URL 優先，其次 config.js
+    activeUnit = params.get('unit') || (typeof CONFIG !== 'undefined' && CONFIG.UNIT) || '';
+    activeUnitToken = params.get('unitToken') || (typeof CONFIG !== 'undefined' && CONFIG.UNIT_TOKEN) || '';
+
+    // 若網址指定活動金鑰，先記住
+    if (urlKey) unlockedActivityKeys.set(urlAct, urlKey);
 
     await loadActivities();
 
@@ -65,10 +85,13 @@ async function init() {
     }
 
     if (currentActivityId) {
-      await loadActivityInfo(currentActivityId);
+      const infoOk = await loadActivityInfo(currentActivityId);
       currentCategory = (urlCat && categories.some(c => c.name === urlCat)) ? urlCat : '';
-      // 預設不自動載入資料：只有網址指定分類時才讀取；否則等訪客點選分類籤
-      if (urlCat && currentCategory === urlCat) {
+      if (!infoOk) {
+        renderTabs();
+        renderCategoryTabs();
+        renderTableEmpty('此活動需輸入存取金鑰');
+      } else if (urlCat && currentCategory === urlCat) {
         await switchCategory(currentCategory);
         // 若網址指定了鎖定分類，自動彈出密碼框
         const catObj = categories.find(c => c.name === urlCat);
@@ -91,7 +114,9 @@ async function init() {
 
 // 載入活動列表
 async function loadActivities() {
-  const res = await fetchJSON('listActivities');
+  const params = {};
+  if (activeUnit) { params.unit = activeUnit; params.unitToken = activeUnitToken; }
+  const res = await fetchJSON('listActivities', params);
   if (!res.ok) throw new Error(res.error || '載入活動失敗');
   activities = res.activities || [];
   publicToken = res.publicToken || null;
@@ -99,20 +124,38 @@ async function loadActivities() {
 }
 
 // 載入活動資訊與分類清單
+// 回傳 true 成功；false 表示活動需金鑰（已彈出輸入框）
 async function loadActivityInfo(actId) {
   const token = sessionStorage.getItem('publicToken') || publicToken || '';
-  const res = await fetchJSON('getActivityInfo', { act: actId, token });
-  if (!res.ok) throw new Error(res.error || '載入活動資訊失敗');
+  const params = { act: actId, token };
+  // 活動有金鑰且已解鎖 → 帶上 key
+  const key = unlockedActivityKeys.get(actId);
+  if (key) params.key = key;
+  const res = await fetchJSON('getActivityInfo', params);
+  if (!res.ok) {
+    // C 模式：金鑰不足 → 彈出金鑰解鎖框，回傳 false
+    if (res.code === 'NEED_KEY') {
+      requestActivityKey(actId);
+      activityInfo = null;
+      categories = [];
+      return false;
+    }
+    throw new Error(res.error || '載入活動資訊失敗');
+  }
   activityInfo = res.activity;
   categories = res.categories || [];
+  return true;
 }
 
 // 切換活動
 async function switchActivity(actId) {
   currentActivityId = actId;
   currentCategory = '';
-  await loadActivityInfo(actId);
+  sortState = { field: '', dir: 'asc', userTouched: false };
+  searchInput.value = '';
+  const ok = await loadActivityInfo(actId);
   renderTabs();
+  if (!ok) { renderTableEmpty('此活動需輸入存取金鑰'); return; }
   await switchCategory('');
 }
 
@@ -148,17 +191,26 @@ async function loadData(cat = '', pwd = '') {
   const token = sessionStorage.getItem('publicToken') || publicToken || '';
   showLoading(true);
   try {
-    const res = await fetchJSON('getList', { act: currentActivityId, token, cat, pwd });
+    const params = { act: currentActivityId, token, cat, pwd };
+    const key = unlockedActivityKeys.get(currentActivityId);
+    if (key) params.key = key;
+    const res = await fetchJSON('getList', params);
     if (!res.ok) {
       if (res.code === 'NEED_PWD') {
         renderTableEmpty('此分類已鎖定，請輸入密碼查看');
         requestPassword(cat);
         return;
       }
+      if (res.code === 'NEED_KEY') {
+        renderTableEmpty('此活動需輸入存取金鑰');
+        requestActivityKey(currentActivityId);
+        return;
+      }
       throw new Error(res.error || '載入資料失敗');
     }
     currentData = { fields: res.fields || [], rows: res.rows || [] };
     applyDefaultSortIfNeeded();
+    restoreSearchMemory();
     renderTable();
     updateLastUpdated(res.updatedAt);
     searchBarEl.style.display = 'flex';
@@ -186,6 +238,48 @@ function requestPassword(cat) {
   setTimeout(() => categoryPwdInput.focus(), 100);
 }
 
+// 活動金鑰解鎖（C 模式）
+function requestActivityKey(actId) {
+  const act = activities.find(a => a.id === actId);
+  keyModalTitle.textContent = `開啟「${act ? act.name : '活動'}」`;
+  keyModalDesc.textContent = '此活動已設定存取金鑰，請輸入系統提供的金鑰才能檢視。';
+  keyModalHint.textContent = '';
+  keyModalHint.className = 'hint';
+  activityKeyInput.value = '';
+  keyModal.showModal();
+  setTimeout(() => activityKeyInput.focus(), 100);
+}
+
+async function confirmActivityKey() {
+  const key = activityKeyInput.value.trim();
+  if (!key) { showHint(keyModalHint, '請輸入金鑰', true); return; }
+  const actId = currentActivityId;
+  if (!actId) return;
+  const btn = document.getElementById('keyModalConfirm');
+  btn.disabled = true; btn.textContent = '驗證中…';
+  try {
+    const token = sessionStorage.getItem('publicToken') || publicToken || '';
+    const res = await fetchJSON('getActivityInfo', { act: actId, token, key });
+    if (!res.ok) {
+      showHint(keyModalHint, res.code === 'NEED_KEY' ? '金鑰錯誤，請再試一次' : (res.error || '驗證失敗'), true);
+      return;
+    }
+    // 金鑰正確：記住並載入活動
+    unlockedActivityKeys.set(actId, key);
+    keyModal.close();
+    activityInfo = res.activity;
+    categories = res.categories || [];
+    currentCategory = '';
+    renderTabs();
+    renderCategoryTabs();
+    renderTableEmpty('請點選上方分類開始翻閱');
+  } catch (err) {
+    showHint(keyModalHint, err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '開啟活動';
+  }
+}
+
 async function confirmUnlock() {
   const pwd = categoryPwdInput.value.trim();
   if (!pwd) { showHint(pwdModalHint, '請輸入密碼', true); return; }
@@ -195,7 +289,10 @@ async function confirmUnlock() {
   btn.disabled = true; btn.textContent = '驗證中…';
   try {
     const token = sessionStorage.getItem('publicToken') || publicToken || '';
-    const res = await fetchJSON('getList', { act: currentActivityId, token, cat, pwd });
+    const params = { act: currentActivityId, token, cat, pwd };
+    const key = unlockedActivityKeys.get(currentActivityId);
+    if (key) params.key = key;
+    const res = await fetchJSON('getList', params);
     if (!res.ok) {
       showHint(pwdModalHint, res.code === 'NEED_PWD' ? '密碼錯誤，請再試一次' : (res.error || '驗證失敗'), true);
       return;
@@ -221,6 +318,9 @@ async function confirmUnlock() {
 // 複製分類連結
 function copyCategoryLink() {
   const url = new URL(location.origin + location.pathname);
+  if (activeUnit) { url.searchParams.set('unit', activeUnit); url.searchParams.set('unitToken', activeUnitToken); }
+  const key = unlockedActivityKeys.get(currentActivityId);
+  if (key) url.searchParams.set('key', key);
   url.searchParams.set('act', currentActivityId);
   url.searchParams.set('cat', currentCategory);
   const text = url.toString();
@@ -313,6 +413,8 @@ function renderTable() {
 
   tableWrapperEl.style.display = 'none';
   cardListEl.style.display = 'none';
+  categorySummaryEl.style.display = 'none';
+  categorySummaryEl.innerHTML = '';
 
   if (filteredRows.length === 0) {
     renderTableEmpty('此分類尚無資料');
@@ -424,15 +526,41 @@ function handleSort(field) {
     sortState.dir = 'asc';
   }
   sortState.userTouched = true;
+  saveSortMemory();
   renderTable();
 }
 
-// 若訪客尚未手動排序，套用後台設定的預設排序
+// C：記住訪客最後的排序（localStorage，依活動區分）
+function saveSortMemory() {
+  if (!currentActivityId) return;
+  const key = 'sort_mem_' + currentActivityId;
+  try {
+    localStorage.setItem(key, JSON.stringify({ field: sortState.field, dir: sortState.dir }));
+  } catch (e) { /* localStorage 不可用時略過 */ }
+}
+
+function loadSortMemory() {
+  if (!currentActivityId) return null;
+  try {
+    const raw = localStorage.getItem('sort_mem_' + currentActivityId);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+// 若訪客尚未手動排序：優先套用記憶的排序，其次後台設定的預設排序
 function applyDefaultSortIfNeeded() {
   if (sortState.userTouched) return;
+  const fields = currentData.fields || [];
+
+  // C：記憶優先（訪客上次的選擇）
+  const mem = loadSortMemory();
+  if (mem && mem.field && fields.includes(mem.field)) {
+    sortState = { field: mem.field, dir: mem.dir === 'desc' ? 'desc' : 'asc', userTouched: false };
+    return;
+  }
+
   const df = activityInfo?.defaultSortField || '';
   const dir = activityInfo?.defaultSortDir === 'desc' ? 'desc' : 'asc';
-  const fields = currentData.fields || [];
   if (df && fields.includes(df)) {
     sortState = { field: df, dir, userTouched: false };
   } else {
@@ -449,6 +577,34 @@ function renderTableEmpty(msg) {
   currentData = { fields: [], rows: [] };
   btnExportCsv.style.display = 'none';
   searchBarEl.style.display = 'none';
+  renderCategorySummary();
+}
+
+// B：分類摘要卡片——未選分類時顯示各分類的概覽卡片
+function renderCategorySummary() {
+  if (!activityInfo || categories.length === 0 || currentCategory) {
+    categorySummaryEl.style.display = 'none';
+    categorySummaryEl.innerHTML = '';
+    return;
+  }
+  categorySummaryEl.style.display = 'grid';
+  const kw = categoryFilter.trim().toLowerCase();
+  const visible = categories.filter(c => !kw || c.name.toLowerCase().includes(kw));
+  categorySummaryEl.innerHTML = visible.map(c => {
+    const locked = c.locked;
+    const unlocked = locked && unlockedCats.has(c.name);
+    return `
+    <button type="button" class="summary-card ${locked ? 'locked' : ''} ${unlocked ? 'unlocked' : ''}" data-summary-cat="${escapeHtml(c.name)}">
+      <span class="summary-card-name">${escapeHtml(c.name)}</span>
+      <span class="summary-card-count">${c.count} 筆</span>
+      <span class="summary-card-lock">${locked ? (unlocked ? '🔓 已解鎖' : '🔒 需密碼') : ''}</span>
+    </button>
+  `;
+  }).join('');
+
+  categorySummaryEl.querySelectorAll('[data-summary-cat]').forEach(btn =>
+    btn.addEventListener('click', () => switchCategory(btn.dataset.summaryCat))
+  );
 }
 
 // 匯出目前分類（含關鍵字過濾）為 CSV
@@ -486,6 +642,10 @@ function setupSearch() {
   let debounceTimer;
   searchInput.addEventListener('input', () => {
     clearTimeout(debounceTimer);
+    // C：記憶搜尋字詞
+    if (currentActivityId) {
+      try { localStorage.setItem('search_mem_' + currentActivityId, searchInput.value); } catch (e) {}
+    }
     debounceTimer = setTimeout(() => renderTable(), 120);
   });
 
@@ -494,6 +654,15 @@ function setupSearch() {
     categoryFilter = categorySearchInput.value;
     renderCategoryTabs();
   });
+}
+
+// C：還原訪客上次的搜尋字詞
+function restoreSearchMemory() {
+  if (!currentActivityId) return;
+  try {
+    const mem = localStorage.getItem('search_mem_' + currentActivityId);
+    searchInput.value = mem || '';
+  } catch (e) {}
 }
 
 // 關鍵字篩選 + 排序（renderTable 與 exportCsv 共用，確保 CSV 跟隨排序）
@@ -557,6 +726,10 @@ function setupModalEvents() {
   document.getElementById('pwdModalCancel').addEventListener('click', () => pwdModal.close());
   document.getElementById('pwdModalClose').addEventListener('click', () => pwdModal.close());
   categoryPwdInput.addEventListener('keydown', e => e.key === 'Enter' && confirmUnlock());
+  document.getElementById('keyModalConfirm').addEventListener('click', confirmActivityKey);
+  document.getElementById('keyModalCancel').addEventListener('click', () => keyModal.close());
+  document.getElementById('keyModalClose').addEventListener('click', () => keyModal.close());
+  document.getElementById('activityKeyInput').addEventListener('keydown', e => e.key === 'Enter' && confirmActivityKey());
   btnCopyLink.addEventListener('click', copyCategoryLink);
   btnExportCsv.addEventListener('click', exportCsv);
 }
@@ -576,6 +749,10 @@ async function fetchJSON(action, params = {}) {
 function showHint(el, msg, isError) {
   el.textContent = msg;
   el.className = 'hint' + (isError ? ' error' : ' success');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 // 啟動
