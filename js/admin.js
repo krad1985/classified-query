@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 分類查詢 - 管理後台邏輯
  * 負責：登入驗證、活動 CRUD、分類欄位、顯示欄位、分類密碼生成、密碼變更
  */
@@ -10,6 +10,10 @@ let availableFields = [];   // 從試算表讀取的欄位
 let categoryValues = [];    // 分類欄位的所有唯一值
 let editingActivityId = null;
 let pendingProtected = {};  // 目前編輯中活動的分類密碼 { 分類: 密碼 }
+let selectedFields = [];    // 顯示欄位排序清單（勾選 + 順序）
+
+// CSS.escape fallback（用於 selector 建構）
+const cssEsc = typeof CSS !== 'undefined' && CSS.escape ? s => CSS.escape(s) : s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
 
 // DOM
 const loginSection = document.getElementById('loginSection');
@@ -27,7 +31,8 @@ const actNameInput = document.getElementById('actName');
 const actSheetUrlInput = document.getElementById('actSheetUrl');
 const actSheetNameInput = document.getElementById('actSheetName');
 const actCategoryField = document.getElementById('actCategoryField');
-const fieldCheckboxesEl = document.getElementById('fieldCheckboxes');
+const fieldSortListEl = document.getElementById('fieldSortList');
+const fieldSortHintEl = document.getElementById('fieldSortHint');
 const categoryPwdListEl = document.getElementById('categoryPwdList');
 const catPwdHintEl = document.getElementById('catPwdHint');
 const btnTestConnection = document.getElementById('btnTestConnection');
@@ -132,11 +137,19 @@ function openModal(actId = null) {
       actSheetUrlInput.value = act.sheetUrl || '';
       actSheetNameInput.value = act.sheetName || '';
       pendingProtected = { ...(act.protectedCategories || {}) };
+      // 顯示欄位：依活動既有的 displayFields 順序建立選取與排序
+      const existing = act.displayFields || [];
+      selectedFields = existing.length ? [...existing] : [];
       handleTestConnection(true).then(() => {
         actCategoryField.value = act.categoryField || '';
-        fieldCheckboxesEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-          cb.checked = (act.displayFields || []).includes(cb.value);
-        });
+        // 若 selectedFields 尚未建立（活動無顯示欄位），預設全選
+        if (existing.length === 0) {
+          selectedFields = [...availableFields];
+        } else {
+          // 補上試算表新增的欄位（排在後方）
+          availableFields.forEach(f => { if (!selectedFields.includes(f)) selectedFields.push(f); });
+        }
+        renderFieldSortList();
         updateCategoryValues();
         renderCategoryPwdList();
       });
@@ -158,12 +171,14 @@ function resetModalForm() {
   actSheetUrlInput.value = '';
   actSheetNameInput.value = '';
   actCategoryField.innerHTML = '<option value="">（請先測試連線取得欄位）</option>';
-  fieldCheckboxesEl.innerHTML = '';
+  fieldSortListEl.innerHTML = '';
+  fieldSortHintEl.textContent = '';
   categoryPwdListEl.innerHTML = '';
   catPwdHintEl.textContent = '';
   availableFields = [];
   categoryValues = [];
   pendingProtected = {};
+  selectedFields = [];
   connectionHint.textContent = '';
   connectionHint.className = 'hint';
 }
@@ -194,14 +209,81 @@ function renderFieldOptions() {
     ? `<option value="">（請選擇分類欄位）</option>` + availableFields.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('')
     : '<option value="">（請先測試連線取得欄位）</option>';
 
-  // 顯示欄位勾選
+  // 顯示欄位排序清單
+  renderFieldSortList();
+}
+
+// 渲染顯示欄位排序清單（勾選 + 上移/下移）
+function renderFieldSortList() {
   if (availableFields.length === 0) {
-    fieldCheckboxesEl.innerHTML = '<p class="hint">請先測試連線以取得欄位清單</p>';
+    fieldSortListEl.innerHTML = '<li class="hint">請先測試連線以取得欄位清單</li>';
     return;
   }
-  fieldCheckboxesEl.innerHTML = availableFields.map(f => `
-    <label><input type="checkbox" value="${escapeHtml(f)}"> ${escapeHtml(f)}</label>
+
+  // 確保 selectedFields 與 availableFields 同步（保留既有選取與順序）
+  const selectedSet = new Set(selectedFields);
+  selectedFields = selectedFields.filter(f => availableFields.includes(f));
+  availableFields.forEach(f => { if (!selectedFields.includes(f)) selectedFields.push(f); });
+
+  fieldSortListEl.innerHTML = selectedFields.map((f, i) => `
+    <li class="field-sort-item" data-field="${escapeHtml(f)}">
+      <label>
+        <input type="checkbox" data-check="${escapeHtml(f)}" ${selectedSet.has(f) ? 'checked' : ''}>
+        ${escapeHtml(f)}
+      </label>
+      <div class="sort-btns">
+        <button type="button" class="btn btn-secondary btn-icon" data-up="${escapeHtml(f)}" aria-label="上移 ${escapeHtml(f)}" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="btn btn-secondary btn-icon" data-down="${escapeHtml(f)}" aria-label="下移 ${escapeHtml(f)}" ${i === selectedFields.length - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+    </li>
   `).join('');
+
+  // 勾選切換：加入/移出顯示欄位
+  fieldSortListEl.querySelectorAll('[data-check]').forEach(cb =>
+    cb.addEventListener('change', () => {
+      const f = cb.dataset.check;
+      const idx = selectedFields.indexOf(f);
+      if (cb.checked) {
+        if (idx < 0) selectedFields.push(f);
+      } else {
+        if (idx >= 0) selectedFields.splice(idx, 1);
+      }
+      updateFieldSortHint();
+    })
+  );
+
+  // 上移 / 下移
+  fieldSortListEl.querySelectorAll('[data-up]').forEach(btn =>
+    btn.addEventListener('click', () => moveField(btn.dataset.up, -1))
+  );
+  fieldSortListEl.querySelectorAll('[data-down]').forEach(btn =>
+    btn.addEventListener('click', () => moveField(btn.dataset.down, 1))
+  );
+
+  updateFieldSortHint();
+}
+
+// 調整欄位順序
+function moveField(field, dir) {
+  const idx = selectedFields.indexOf(field);
+  if (idx < 0) return;
+  const target = idx + dir;
+  if (target < 0 || target >= selectedFields.length) return;
+  const tmp = selectedFields[idx];
+  selectedFields[idx] = selectedFields[target];
+  selectedFields[target] = tmp;
+  renderFieldSortList();
+}
+
+// 更新排序提示
+function updateFieldSortHint() {
+  const checked = selectedFields.filter(f => {
+    const cb = fieldSortListEl.querySelector(`[data-check="${cssEsc(f)}"]`);
+    return cb && cb.checked;
+  });
+  fieldSortHintEl.textContent = checked.length
+    ? `已選 ${checked.length} 個欄位：${checked.join(' → ')}`
+    : '尚未勾選任何欄位';
 }
 
 // 分類欄位變更
@@ -323,7 +405,10 @@ async function handleSaveActivity() {
   const sheetUrl = actSheetUrlInput.value.trim();
   const sheetName = actSheetNameInput.value.trim();
   const categoryField = actCategoryField.value;
-  const displayFields = Array.from(fieldCheckboxesEl.querySelectorAll('input:checked')).map(cb => cb.value);
+  const displayFields = selectedFields.filter(f => {
+    const cb = fieldSortListEl.querySelector(`[data-check="${cssEsc(f)}"]`);
+    return cb && cb.checked;
+  });
 
   if (!name) { alert('請輸入活動名稱'); return; }
   if (!sheetUrl) { alert('請輸入試算表網址'); return; }

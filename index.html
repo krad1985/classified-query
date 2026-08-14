@@ -3,13 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>分類查詢 - 報名資料查詢</title>
+  <title>名冊查詢 - 報名資料查詢</title>
+  <meta name="description" content="依區域 / 教室欄位篩選，依分類檢視報名資料">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="site-header">
-    <h1>報名資料查詢</h1>
-    <p class="subtitle">依區域/教室欄位篩選，依分類檢視報名資料</p>
+    <span class="seal" aria-hidden="true">冊</span>
+    <h1>報名名冊</h1>
+    <p class="subtitle">依區域／教室篩選，翻閱各分類名冊</p>
   </header>
 
   <main class="container">
@@ -22,7 +27,11 @@
     <div class="category-bar" id="categoryBar" style="display:none;">
       <span class="category-label" id="categoryLabel"></span>
       <div class="category-tabs" id="categoryTabs"></div>
-      <button class="btn btn-secondary btn-sm" id="btnCopyLink" style="display:none;">複製分類連結</button>
+      <div class="category-filter">
+        <label for="categorySearch" class="visually-hidden">搜尋分類</label>
+        <input type="search" id="categorySearch" placeholder="找分類…" autocomplete="off">
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btnCopyLink" style="display:none;">複製連結</button>
     </div>
 
     <!-- 密碼鎖 Modal -->
@@ -47,11 +56,14 @@
       </div>
     </dialog>
 
-    <!-- 搜尋/篩選列 -->
+    <!-- 搜尋 / 篩選列 -->
     <div class="search-bar" id="searchBar" style="display:none;">
       <label for="searchInput" class="visually-hidden">關鍵字搜尋</label>
       <input type="search" id="searchInput" placeholder="輸入姓名、班級等關鍵字篩選" autocomplete="off">
       <span class="result-count" id="resultCount"></span>
+      <div class="search-actions">
+        <button class="btn btn-secondary btn-sm" id="btnExportCsv" style="display:none;">匯出名冊</button>
+      </div>
     </div>
 
     <!-- 資料表格區 -->
@@ -66,11 +78,12 @@
     <!-- 頁尾 -->
     <footer class="status-bar" id="statusBar" aria-live="polite">
       <span id="lastUpdated"></span>
+      <span>不積跬步，無以至千里</span>
       <a href="admin.html" class="admin-link">管理後台</a>
     </footer>
   </main>
 
-  <script src="js/config.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/config.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

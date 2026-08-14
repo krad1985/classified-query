@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>管理後台 - 分類查詢</title>
+  <title>管理後台 - 名冊查詢</title>
+  <meta name="description" content="設定活動分類欄位、顯示欄位、分類密碼鎖">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="site-header">
+    <span class="seal" aria-hidden="true">閣</span>
     <h1>管理後台</h1>
     <p class="subtitle">設定活動分類欄位、顯示欄位、分類密碼鎖</p>
   </header>
@@ -59,12 +64,13 @@
               <select id="actCategoryField" required>
                 <option value="">（請先測試連線取得欄位）</option>
               </select>
-              <p class="hint">選擇要用來「分類/區域/教室」的欄位（例如母班區域、教室、縣市等）</p>
+              <p class="hint">選擇要用來「分類／區域／教室」的欄位（例如母班區域、教室、縣市等）</p>
             </div>
             <fieldset class="form-group">
-              <legend>要顯示的欄位 <span class="required">*</span></legend>
-              <div id="fieldCheckboxes" class="checkbox-grid"></div>
-              <p class="hint">勾選將在查詢頁顯示的欄位（建議姓名、報名班別、單位、縣市、區域等）</p>
+              <legend>顯示欄位（勾選並排序）<span class="required">*</span></legend>
+              <p class="hint">勾選要在名冊中顯示的欄位，用 ▲ ▼ 調整欄位順序。</p>
+              <ul id="fieldSortList" class="field-sort-list"></ul>
+              <p class="hint" id="fieldSortHint"></p>
             </fieldset>
             <fieldset class="form-group">
               <legend>分類密碼鎖（選填）</legend>
@@ -107,7 +113,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=4"></script>
-  <script src="js/admin.js?v=4"></script>
+  <script src="js/config.js?v=5"></script>
+  <script src="js/admin.js?v=5"></script>
 </body>
 </html>

@@ -21,9 +21,11 @@ const categoryBarEl = document.getElementById('categoryBar');
 const categoryLabelEl = document.getElementById('categoryLabel');
 const categoryTabsEl = document.getElementById('categoryTabs');
 const btnCopyLink = document.getElementById('btnCopyLink');
+const categorySearchInput = document.getElementById('categorySearch');
 const searchBarEl = document.getElementById('searchBar');
 const searchInput = document.getElementById('searchInput');
 const resultCountEl = document.getElementById('resultCount');
+const btnExportCsv = document.getElementById('btnExportCsv');
 const tableHeadEl = document.getElementById('tableHead');
 const tableBodyEl = document.getElementById('tableBody');
 const emptyStateEl = document.getElementById('emptyState');
@@ -34,6 +36,9 @@ const pwdModalTitle = document.getElementById('pwdModalTitle');
 const pwdModalDesc = document.getElementById('pwdModalDesc');
 const pwdModalHint = document.getElementById('pwdModalHint');
 const categoryPwdInput = document.getElementById('categoryPwdInput');
+
+// 分類搜尋關鍵字（本地過濾，不影響後端）
+let categoryFilter = '';
 
 // 目標分類（等待解鎖）
 let pendingCategory = null;
@@ -189,7 +194,8 @@ async function confirmUnlock() {
     renderTable();
     updateLastUpdated(res.updatedAt);
     searchBarEl.style.display = 'flex';
-    btnCopyLink.style.display = 'inline-flex';
+    btnCopyLink.style.display = currentCategory ? 'inline-flex' : 'none';
+    btnExportCsv.style.display = 'inline-flex';
     renderCategoryTabs(); // 更新鎖定圖示
   } catch (err) {
     showHint(pwdModalHint, err.message, true);
@@ -234,7 +240,7 @@ function renderCategoryTabs() {
   categoryLabelEl.textContent = activityInfo.categoryField || '分類';
   categoryTabsEl.innerHTML = '';
 
-  // 「全部」籤
+  // 「全部」籤（不受分類搜尋影響）
   const allBtn = document.createElement('button');
   allBtn.type = 'button';
   allBtn.className = 'category-tab' + (!currentCategory ? ' active' : '');
@@ -243,23 +249,47 @@ function renderCategoryTabs() {
   allBtn.addEventListener('click', () => switchCategory(''));
   categoryTabsEl.appendChild(allBtn);
 
-  categories.forEach(c => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'category-tab' + (c.name === currentCategory ? ' active' : '');
-    btn.dataset.cat = c.name;
-    btn.textContent = `${c.name} (${c.count})`;
-    if (c.locked) {
-      btn.classList.add('locked');
-      const lock = document.createElement('span');
-      lock.className = 'lock-badge';
-      lock.textContent = unlockedCats.has(c.name) ? '🔓' : '🔒';
-      lock.title = unlockedCats.has(c.name) ? '已解鎖' : '需密碼';
-      btn.appendChild(lock);
+  const kw = categoryFilter.trim().toLowerCase();
+  categories
+    .filter(c => !kw || c.name.toLowerCase().includes(kw))
+    .forEach(c => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'category-tab' + (c.name === currentCategory ? ' active' : '');
+      btn.dataset.cat = c.name;
+      btn.textContent = `${c.name} (${c.count})`;
+      if (c.locked) {
+        btn.classList.add('locked');
+        const lock = document.createElement('span');
+        lock.className = 'lock-badge';
+        lock.textContent = unlockedCats.has(c.name) ? '🔓' : '🔒';
+        lock.title = unlockedCats.has(c.name) ? '已解鎖' : '需密碼';
+        btn.appendChild(lock);
+      }
+      btn.addEventListener('click', () => switchCategory(c.name));
+      categoryTabsEl.appendChild(btn);
+    });
+
+  // 若目前分類被搜尋過濾掉，仍保留它的籤（避免畫面遺失選取）
+  if (currentCategory && kw && !categories.find(c => c.name === currentCategory)?.name.toLowerCase().includes(kw)) {
+    const cur = categories.find(c => c.name === currentCategory);
+    if (cur) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'category-tab active';
+      btn.dataset.cat = cur.name;
+      btn.textContent = `${cur.name} (${cur.count})`;
+      if (cur.locked) {
+        btn.classList.add('locked');
+        const lock = document.createElement('span');
+        lock.className = 'lock-badge';
+        lock.textContent = unlockedCats.has(cur.name) ? '🔓' : '🔒';
+        btn.appendChild(lock);
+      }
+      btn.addEventListener('click', () => switchCategory(cur.name));
+      categoryTabsEl.appendChild(btn);
     }
-    btn.addEventListener('click', () => switchCategory(c.name));
-    categoryTabsEl.appendChild(btn);
-  });
+  }
 }
 
 // 渲染表格
@@ -302,6 +332,37 @@ function renderTableEmpty(msg) {
   tableWrapperEl.style.display = 'none';
   resultCountEl.textContent = '';
   currentData = { fields: [], rows: [] };
+  btnExportCsv.style.display = 'none';
+}
+
+// 匯出目前分類（含關鍵字過濾）為 CSV
+function exportCsv() {
+  const { fields, rows } = currentData;
+  const filteredRows = getFilteredRows();
+  if (filteredRows.length === 0) {
+    alert('目前沒有可匯出的資料');
+    return;
+  }
+  const esc = v => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [];
+  lines.push(fields.map(esc).join(','));
+  filteredRows.forEach(r => lines.push(r.map(esc).join(',')));
+  const csv = '\uFEFF' + lines.join('\r\n'); // BOM 讓 Excel 正確辨識 UTF-8
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const actName = activityInfo?.name || '名冊';
+  const catPart = currentCategory ? `_${currentCategory}` : '_全部';
+  a.href = url;
+  a.download = `${actName}${catPart}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // 關鍵字篩選
@@ -310,6 +371,12 @@ function setupSearch() {
   searchInput.addEventListener('input', () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => renderTable(), 120);
+  });
+
+  // 分類搜尋：只影響分類籤的本地顯示
+  categorySearchInput.addEventListener('input', () => {
+    categoryFilter = categorySearchInput.value;
+    renderCategoryTabs();
   });
 }
 
@@ -347,6 +414,7 @@ function setupModalEvents() {
   document.getElementById('pwdModalClose').addEventListener('click', () => pwdModal.close());
   categoryPwdInput.addEventListener('keydown', e => e.key === 'Enter' && confirmUnlock());
   btnCopyLink.addEventListener('click', copyCategoryLink);
+  btnExportCsv.addEventListener('click', exportCsv);
 }
 
 // 統一 fetch 包裝
