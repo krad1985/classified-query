@@ -40,6 +40,10 @@ const categoryPwdInput = document.getElementById('categoryPwdInput');
 // 分類搜尋關鍵字（本地過濾，不影響後端）
 let categoryFilter = '';
 
+// 排序狀態：{ field, dir }；field 為 '' 表示不排序（依原始順序）
+// userTouched 為 true 表示訪客已手動排序，之後載入資料不再覆蓋
+let sortState = { field: '', dir: 'asc', userTouched: false };
+
 // 目標分類（等待解鎖）
 let pendingCategory = null;
 
@@ -148,6 +152,7 @@ async function loadData(cat = '', pwd = '') {
       throw new Error(res.error || '載入資料失敗');
     }
     currentData = { fields: res.fields || [], rows: res.rows || [] };
+    applyDefaultSortIfNeeded();
     renderTable();
     updateLastUpdated(res.updatedAt);
     searchBarEl.style.display = 'flex';
@@ -193,6 +198,7 @@ async function confirmUnlock() {
     unlockedCats.set(cat, pwd);
     pwdModal.close();
     currentData = { fields: res.fields || [], rows: res.rows || [] };
+    applyDefaultSortIfNeeded();
     renderTable();
     updateLastUpdated(res.updatedAt);
     searchBarEl.style.display = 'flex';
@@ -303,7 +309,21 @@ function renderTable() {
   const tr = document.createElement('tr');
   fields.forEach(f => {
     const th = document.createElement('th');
-    th.textContent = f;
+    th.scope = 'col';
+    th.className = 'sortable';
+    th.title = '點擊排序';
+    const label = document.createElement('span');
+    label.className = 'th-label';
+    label.textContent = f;
+    th.appendChild(label);
+    if (sortState.field === f) {
+      th.classList.add('sorted', sortState.dir);
+      const arrow = document.createElement('span');
+      arrow.className = 'sort-arrow';
+      arrow.textContent = sortState.dir === 'asc' ? ' ▲' : ' ▼';
+      th.appendChild(arrow);
+    }
+    th.addEventListener('click', () => handleSort(f));
     tr.appendChild(th);
   });
   tableHeadEl.appendChild(tr);
@@ -326,6 +346,31 @@ function renderTable() {
     });
     tableBodyEl.appendChild(tr);
   });
+}
+
+// 訪客點標題排序：依欄位切換升/降，再點同欄反轉方向
+function handleSort(field) {
+  if (sortState.field === field) {
+    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortState.field = field;
+    sortState.dir = 'asc';
+  }
+  sortState.userTouched = true;
+  renderTable();
+}
+
+// 若訪客尚未手動排序，套用後台設定的預設排序
+function applyDefaultSortIfNeeded() {
+  if (sortState.userTouched) return;
+  const df = activityInfo?.defaultSortField || '';
+  const dir = activityInfo?.defaultSortDir === 'desc' ? 'desc' : 'asc';
+  const fields = currentData.fields || [];
+  if (df && fields.includes(df)) {
+    sortState = { field: df, dir, userTouched: false };
+  } else {
+    sortState = { field: '', dir: 'asc', userTouched: false };
+  }
 }
 
 function renderTableEmpty(msg) {
@@ -382,12 +427,39 @@ function setupSearch() {
   });
 }
 
+// 關鍵字篩選 + 排序（renderTable 與 exportCsv 共用，確保 CSV 跟隨排序）
 function getFilteredRows() {
   const keyword = searchInput.value.trim().toLowerCase();
-  if (!keyword) return currentData.rows;
-  return currentData.rows.filter(row =>
-    row.some(cell => String(cell).toLowerCase().includes(keyword))
-  );
+  let rows = currentData.rows;
+  if (keyword) {
+    rows = rows.filter(row =>
+      row.some(cell => String(cell).toLowerCase().includes(keyword))
+    );
+  }
+  return sortRows(rows);
+}
+
+// 依目前排序狀態排序（使用自然排序：數字優先、中文依 locale 比較）
+function sortRows(rows) {
+  const { field, dir } = sortState;
+  if (!field) return rows;
+  const fields = currentData.fields || [];
+  const idx = fields.indexOf(field);
+  if (idx < 0) return rows;
+  const factor = dir === 'desc' ? -1 : 1;
+  const sorted = [...rows];
+  sorted.sort((a, b) => {
+    const va = a[idx];
+    const vb = b[idx];
+    const sa = va == null ? '' : String(va).trim();
+    const sb = vb == null ? '' : String(vb).trim();
+    // 兩者皆為數字字串 → 數值比較（避免 10 < 2）
+    if (sa !== '' && sb !== '' && !isNaN(sa) && !isNaN(sb)) {
+      return (Number(sa) - Number(sb)) * factor;
+    }
+    return sa.localeCompare(sb, 'zh-TW', { numeric: true }) * factor;
+  });
+  return sorted;
 }
 
 function updateLastUpdated(iso) {

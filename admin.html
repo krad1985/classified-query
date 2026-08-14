@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
   <header class="site-header">
@@ -73,6 +73,25 @@
               <p class="hint" id="fieldSortHint"></p>
             </fieldset>
             <fieldset class="form-group">
+              <legend>預設排序（選填）</legend>
+              <p class="hint">訪客開啟名冊時預設依此欄位排序，仍可點表格標題自行切換。</p>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="actDefaultSortField">排序欄位</label>
+                  <select id="actDefaultSortField">
+                    <option value="">（不排序，依原始順序）</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="actDefaultSortDir">方向</label>
+                  <select id="actDefaultSortDir">
+                    <option value="asc">升序（小 → 大）</option>
+                    <option value="desc">降序（大 → 小）</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="form-group">
               <legend>分類密碼鎖（選填）</legend>
               <p class="hint">勾選要鎖住的分類，按「生成密碼」產生密碼。訪客需輸入該分類密碼才能查看。</p>
               <div id="categoryPwdList" class="category-pwd-list"></div>
@@ -113,7 +132,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=6"></script>
-  <script src="js/admin.js?v=6"></script>
+  <script src="js/config.js?v=7"></script>
+  <script src="js/admin.js?v=7"></script>
 </body>
 </html>

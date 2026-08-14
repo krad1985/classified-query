@@ -109,7 +109,9 @@ function handleGetActivityInfo(params) {
       id: activity.id,
       name: activity.name,
       categoryField: activity.categoryField || '',
-      displayFields: activity.displayFields || []
+      displayFields: activity.displayFields || [],
+      defaultSortField: activity.defaultSortField || '',
+      defaultSortDir: activity.defaultSortDir || 'asc'
     },
     categories: categories.map(c => ({
       name: c.name,

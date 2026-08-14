@@ -237,6 +237,21 @@ thead th {
   white-space: nowrap; z-index: 1;
   letter-spacing: .06em;
 }
+/* 可排序標題 */
+thead th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color .15s ease, background-color .15s ease;
+}
+thead th.sortable:hover {
+  color: var(--cinnabar);
+  background: var(--cinnabar-wash);
+}
+thead th.sorted { color: var(--cinnabar); }
+thead th.sorted .sort-arrow { font-size: .78em; letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) {
+  thead th.sortable { transition: none; }
+}
 tbody td { padding: .72rem 1rem; border-bottom: 1px solid var(--line); }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:nth-child(even) td { background: rgba(239,232,216,.35); }

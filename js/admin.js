@@ -11,6 +11,8 @@ let categoryValues = [];    // 分類欄位的所有唯一值
 let editingActivityId = null;
 let pendingProtected = {};  // 目前編輯中活動的分類密碼 { 分類: 密碼 }
 let selectedFields = [];    // 顯示欄位排序清單（勾選 + 順序）
+let defaultSortField = '';  // 預設排序欄位（需為勾選的顯示欄位之一）
+let defaultSortDir = 'asc'; // 預設排序方向：asc / desc
 
 // CSS.escape fallback（用於 selector 建構）
 const cssEsc = typeof CSS !== 'undefined' && CSS.escape ? s => CSS.escape(s) : s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
@@ -33,6 +35,8 @@ const actSheetNameInput = document.getElementById('actSheetName');
 const actCategoryField = document.getElementById('actCategoryField');
 const fieldSortListEl = document.getElementById('fieldSortList');
 const fieldSortHintEl = document.getElementById('fieldSortHint');
+const actDefaultSortField = document.getElementById('actDefaultSortField');
+const actDefaultSortDir = document.getElementById('actDefaultSortDir');
 const categoryPwdListEl = document.getElementById('categoryPwdList');
 const catPwdHintEl = document.getElementById('catPwdHint');
 const btnTestConnection = document.getElementById('btnTestConnection');
@@ -137,6 +141,8 @@ function openModal(actId = null) {
       actSheetUrlInput.value = act.sheetUrl || '';
       actSheetNameInput.value = act.sheetName || '';
       pendingProtected = { ...(act.protectedCategories || {}) };
+      defaultSortField = act.defaultSortField || '';
+      defaultSortDir = act.defaultSortDir || 'asc';
       // 顯示欄位：依活動既有的 displayFields 順序建立選取與排序
       const existing = act.displayFields || [];
       selectedFields = existing.length ? [...existing] : [];
@@ -179,6 +185,8 @@ function resetModalForm() {
   categoryValues = [];
   pendingProtected = {};
   selectedFields = [];
+  defaultSortField = '';
+  defaultSortDir = 'asc';
   connectionHint.textContent = '';
   connectionHint.className = 'hint';
 }
@@ -249,6 +257,7 @@ function renderFieldSortList() {
         if (idx >= 0) selectedFields.splice(idx, 1);
       }
       updateFieldSortHint();
+      renderSortFieldOptions();
     })
   );
 
@@ -261,6 +270,28 @@ function renderFieldSortList() {
   );
 
   updateFieldSortHint();
+  renderSortFieldOptions();
+}
+
+// 渲染「預設排序欄位」下拉（僅列出勾選的顯示欄位）
+function renderSortFieldOptions() {
+  if (!actDefaultSortField) return;
+  const checked = selectedFields.filter(f => {
+    const cb = fieldSortListEl.querySelector(`[data-check="${cssEsc(f)}"]`);
+    return cb && cb.checked;
+  });
+
+  const dir = actDefaultSortDir.value === 'desc' ? 'desc' : 'asc';
+  actDefaultSortDir.value = defaultSortDir === 'desc' ? 'desc' : 'asc';
+
+  // 若目前的預設排序欄位不在勾選清單中，重設為空
+  if (defaultSortField && !checked.includes(defaultSortField)) {
+    defaultSortField = '';
+  }
+
+  actDefaultSortField.innerHTML =
+    '<option value="">（不排序，依原始順序）</option>' +
+    checked.map(f => `<option value="${escapeHtml(f)}" ${f === defaultSortField ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
 }
 
 // 調整欄位順序
@@ -428,7 +459,9 @@ async function handleSaveActivity() {
       sheetUrl,
       categoryField,
       displayFields,
-      protectedCategories: pendingProtected
+      protectedCategories: pendingProtected,
+      defaultSortField: actDefaultSortField.value || '',
+      defaultSortDir: actDefaultSortDir.value === 'desc' ? 'desc' : 'asc'
     };
     const res = await api('saveActivity', { pwd: adminPassword, data: JSON.stringify(data) });
     if (!res.ok) throw new Error(res.error);
