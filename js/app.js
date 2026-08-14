@@ -66,11 +66,16 @@ async function init() {
     if (currentActivityId) {
       await loadActivityInfo(currentActivityId);
       currentCategory = (urlCat && categories.some(c => c.name === urlCat)) ? urlCat : '';
-      await switchCategory(currentCategory);
-      // 若網址指定了鎖定分類，自動彈出密碼框
+      // 預設不自動載入資料：只有網址指定分類時才讀取；否則等訪客點選分類籤
       if (urlCat && currentCategory === urlCat) {
+        await switchCategory(currentCategory);
+        // 若網址指定了鎖定分類，自動彈出密碼框
         const catObj = categories.find(c => c.name === urlCat);
         if (catObj && catObj.locked) requestPassword(urlCat);
+      } else {
+        renderTabs();
+        renderCategoryTabs();
+        renderTableEmpty('請點選上方分類開始翻閱');
       }
     } else {
       renderTabs();
@@ -380,6 +385,7 @@ function renderTableEmpty(msg) {
   resultCountEl.textContent = '';
   currentData = { fields: [], rows: [] };
   btnExportCsv.style.display = 'none';
+  searchBarEl.style.display = 'none';
 }
 
 // 匯出目前分類（含關鍵字過濾）為 CSV

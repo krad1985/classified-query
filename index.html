@@ -8,13 +8,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=7">
+  <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
   <header class="site-header">
-    <span class="seal" aria-hidden="true">冊</span>
-    <h1>報名名冊</h1>
-    <p class="subtitle">依區域／教室篩選，翻閱各分類名冊</p>
+    <div class="header-inner">
+      <span class="seal" aria-hidden="true">冊</span>
+      <div class="header-title">
+        <h1>報名名冊</h1>
+        <p class="subtitle">依區域／教室篩選，翻閱各分類名冊</p>
+      </div>
+      <a href="admin.html" class="admin-link header-admin-link">管理後台</a>
+    </div>
   </header>
 
   <main class="container">
@@ -79,11 +84,10 @@
     <footer class="status-bar" id="statusBar" aria-live="polite">
       <span id="lastUpdated"></span>
       <span>不積跬步，無以至千里</span>
-      <a href="admin.html" class="admin-link">管理後台</a>
     </footer>
   </main>
 
-  <script src="js/config.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/config.js?v=8"></script>
+  <script src="js/app.js?v=8"></script>
 </body>
 </html>
