@@ -187,7 +187,11 @@ function handleGetList(params) {
     updatedAt: new Date().toISOString()
   };
 
-  cache.put(cacheKey, JSON.stringify(result), CACHE_TTL);
+  try {
+    cache.put(cacheKey, JSON.stringify(result), CACHE_TTL);
+  } catch (e) {
+    // 資料過大（>100KB）無法寫入 CacheService 時略過，功能不受影響
+  }
   return result;
 }
 
