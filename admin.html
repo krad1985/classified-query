@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理後台 - 分類查詢</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>管理後台</h1>
+    <p class="subtitle">設定活動、分類欄位、顯示欄位、分類密碼</p>
+  </header>
+
+  <main class="container">
+    <!-- 登入區塊 -->
+    <section class="card" id="loginSection">
+      <h2>管理員登入</h2>
+      <div class="form-group">
+        <label for="adminPwd">管理密碼</label>
+        <input type="password" id="adminPwd" placeholder="首次登入將設定為管理密碼" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="btnLogin">登入</button>
+      <p class="hint" id="loginHint"></p>
+    </section>
+
+    <!-- 管理介面（登入後顯示） -->
+    <section id="adminPanel" style="display:none;">
+      <!-- 活動清單 -->
+      <div class="card">
+        <div class="card-header">
+          <h2>活動管理</h2>
+          <button class="btn btn-secondary" id="btnAddActivity">＋ 新增活動</button>
+        </div>
+        <ul class="activity-list" id="activityList"></ul>
+      </div>
+
+      <!-- 新增/編輯活動 Modal -->
+      <dialog id="activityModal" class="modal">
+        <form method="dialog" class="modal-content">
+          <header class="modal-header">
+            <h3 id="modalTitle">新增活動</h3>
+            <button type="button" class="modal-close" aria-label="關閉">&times;</button>
+          </header>
+          <div class="modal-body">
+            <input type="hidden" id="editActivityId">
+            <div class="form-group">
+              <label for="actName">活動名稱 <span class="required">*</span></label>
+              <input type="text" id="actName" placeholder="例如：2026 秋季班" required>
+            </div>
+            <div class="form-group">
+              <label for="actSheetUrl">Google Sheets 網址 <span class="required">*</span></label>
+              <input type="url" id="actSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit" required>
+              <button type="button" class="btn btn-secondary" id="btnTestConnection">測試連線並取得欄位</button>
+              <p class="hint" id="connectionHint"></p>
+            </div>
+            <div class="form-group">
+              <label for="actCategoryField">分類欄位 <span class="required">*</span></label>
+              <select id="actCategoryField" required>
+                <option value="">（請先測試連線取得欄位）</option>
+              </select>
+              <p class="hint">選擇要作為「區域 / 教室」分類的欄位（例如：區域、教室、組別）</p>
+            </div>
+            <fieldset class="form-group">
+              <legend>要顯示的欄位 <span class="required">*</span></legend>
+              <div id="fieldCheckboxes" class="checkbox-grid"></div>
+              <p class="hint">勾選將在公開查詢頁顯示的欄位（建議：姓名、報名時間、單位等非敏感欄位）</p>
+            </fieldset>
+            <fieldset class="form-group">
+              <legend>分類密碼鎖（選填）</legend>
+              <p class="hint">勾選要鎖住的分類，點「生成密碼」產生密碼；訪客需輸入該分類密碼才能查看。</p>
+              <div id="categoryPwdList" class="category-pwd-list"></div>
+              <p class="hint" id="catPwdHint"></p>
+            </fieldset>
+            <div class="form-group">
+              <label for="actSheetName">工作表名稱（選填，留空讀第一個）</label>
+              <input type="text" id="actSheetName" placeholder="表單回應 1">
+            </div>
+          </div>
+          <footer class="modal-footer">
+            <button type="button" class="btn btn-secondary" value="cancel">取消</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveActivity">儲存</button>
+          </footer>
+        </form>
+      </dialog>
+
+      <!-- 密碼變更 -->
+      <div class="card" style="margin-top:1.5rem;">
+        <h2>變更管理密碼</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="oldPwd">舊密碼</label>
+            <input type="password" id="oldPwd" autocomplete="current-password">
+          </div>
+          <div class="form-group">
+            <label for="newPwd">新密碼（至少 6 碼）</label>
+            <input type="password" id="newPwd" minlength="6" autocomplete="new-password">
+          </div>
+        </div>
+        <button class="btn btn-secondary" id="btnChangePwd">更新密碼</button>
+        <p class="hint" id="pwdHint"></p>
+      </div>
+    </section>
+
+    <footer class="status-bar">
+      <a href="index.html" class="admin-link">← 回查詢頁</a>
+    </footer>
+  </main>
+
+  <script src="js/config.js?v=1"></script>
+  <script src="js/admin.js?v=1"></script>
+</body>
+</html>
