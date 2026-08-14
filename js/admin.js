@@ -255,6 +255,7 @@ function renderCategoryPwdList() {
         <span class="cat-pwd-value">${hasPwd ? escapeHtml(pendingProtected[name]) : '未鎖定'}</span>
         <button type="button" class="btn btn-secondary btn-sm" data-gen="${escapeHtml(name)}">${hasPwd ? '重新生成' : '生成密碼'}</button>
         ${hasPwd ? `<button type="button" class="btn btn-danger btn-sm" data-clear="${escapeHtml(name)}">解除</button>` : ''}
+        <button type="button" class="btn btn-secondary btn-sm" data-link="${escapeHtml(name)}">複製連結</button>
       </div>
     </div>
   `;
@@ -266,6 +267,22 @@ function renderCategoryPwdList() {
   categoryPwdListEl.querySelectorAll('[data-clear]').forEach(btn =>
     btn.addEventListener('click', () => { delete pendingProtected[btn.dataset.clear]; renderCategoryPwdList(); })
   );
+  categoryPwdListEl.querySelectorAll('[data-link]').forEach(btn =>
+    btn.addEventListener('click', () => copyCategoryLink(btn.dataset.link))
+  );
+}
+
+// 複製單一分類的專屬查詢網址
+function copyCategoryLink(cat) {
+  const actId = editActivityIdInput.value || '';
+  if (!actId) { showHint(catPwdHintEl, '請先儲存活動後再複製分類連結', true); return; }
+  const base = location.href.split('?')[0].replace(/admin\.html.*$/, 'index.html');
+  const url = `${base}?act=${encodeURIComponent(actId)}&cat=${encodeURIComponent(cat)}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showHint(catPwdHintEl, `已複製「${cat}」專屬網址`, false);
+  }).catch(() => {
+    showHint(catPwdHintEl, '複製失敗，請手動複製：' + url, true);
+  });
 }
 
 // 生成分類密碼（呼叫後端產生，系統給定）
