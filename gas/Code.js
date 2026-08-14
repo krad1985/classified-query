@@ -12,7 +12,7 @@
 const PROP_ACTIVITIES = 'ACTIVITIES_CONFIG';
 const PROP_ADMIN_HASH = 'ADMIN_PWD_HASH';
 const PROP_ADMIN_SALT = 'ADMIN_PWD_SALT';
-const CACHE_PREFIX = 'CLASSIFIED_DATA_';
+const CACHE_PREFIX = 'CLASSIFIED_V2_DATA_';
 const CACHE_TTL = 60; // 秒
 
 /**
@@ -169,16 +169,18 @@ function handleGetList(params) {
     });
   }
 
-  // 只取白名單欄位
-  const fieldIndices = (activity.displayFields || [])
-    .map(f => data.headers.indexOf(f))
-    .filter(i => i >= 0);
-  const projected = rows.map(row => fieldIndices.map(i => row[i]));
+  // 只取白名單欄位（rawRows 為以欄位名為 key 的物件）
+  const projected = rows.map(row => {
+    return (activity.displayFields || []).map(f => {
+      const i = data.headers.indexOf(f);
+      return i >= 0 ? row[data.headers[i]] : null;
+    });
+  });
 
   const result = {
     ok: true,
     name: activity.name,
-    fields: fieldIndices.map(i => data.headers[i]),
+    fields: activity.displayFields || [],
     rows: projected,
     updatedAt: new Date().toISOString()
   };
@@ -397,7 +399,7 @@ function generateCategoryPassword() {
 }
 
 function clearActivityCache(actId) {
-  CacheService.getScriptCache().remove(CACHE_PREFIX + actId + '_');
+  CacheService.getScriptCache().removeAll();
 }
 
 function verifyAdminPassword(pwd) {
