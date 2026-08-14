@@ -152,6 +152,8 @@ async function loadData(cat = '', pwd = '') {
     updateLastUpdated(res.updatedAt);
     searchBarEl.style.display = 'flex';
     btnCopyLink.style.display = currentCategory ? 'inline-flex' : 'none';
+    btnExportCsv.style.display = 'inline-flex';
+    renderCategoryTabs(); // 更新鎖定圖示
   } catch (err) {
     console.error('載入資料失敗:', err);
     showError(err.message);
