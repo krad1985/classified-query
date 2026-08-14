@@ -148,8 +148,8 @@ function handleGetList(params) {
     return { ok: false, code: 'NEED_PWD', error: '此分類已鎖定，需輸入正確密碼' };
   }
 
-  // 快取
-  const cacheKey = CACHE_PREFIX + actId + '_' + cat;
+  // 快取（key 含 cacheVersion，變更設定後世代遞增使舊快取失效）
+  const cacheKey = CACHE_PREFIX + actId + '_v' + (activity.cacheVersion || 0) + '_' + cat;
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
@@ -301,6 +301,8 @@ function handleSaveActivity(params) {
 
   // 確保分類密碼欄位存在
   activityData.protectedCategories = activityData.protectedCategories || {};
+  // 遞增快取世代，使舊快取失效
+  activityData.cacheVersion = (activityData.cacheVersion || 0) + 1;
 
   if (!activityData.id) {
     activityData.id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -311,7 +313,6 @@ function handleSaveActivity(params) {
   }
 
   saveActivitiesConfig(config);
-  clearActivityCache(activityData.id);
   return { ok: true, id: activityData.id };
 }
 
@@ -327,7 +328,6 @@ function handleDeleteActivity(params) {
   const config = getActivitiesConfig();
   config.activities = config.activities.filter(a => a.id !== id);
   saveActivitiesConfig(config);
-  clearActivityCache(id);
   return { ok: true };
 }
 
@@ -348,9 +348,9 @@ function handleGenerateCategoryPassword(params) {
   activity.protectedCategories = activity.protectedCategories || {};
   const password = generateCategoryPassword();
   activity.protectedCategories[cat] = password;
+  activity.cacheVersion = (activity.cacheVersion || 0) + 1;
 
   saveActivitiesConfig(config);
-  clearActivityCache(actId);
   return { ok: true, password, cat };
 }
 
@@ -396,10 +396,6 @@ function generateCategoryPassword() {
     pwd += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return pwd;
-}
-
-function clearActivityCache(actId) {
-  CacheService.getScriptCache().removeAll();
 }
 
 function verifyAdminPassword(pwd) {
