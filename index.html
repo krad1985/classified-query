@@ -3,74 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>分類查詢 - 報名資料查詢</title>
+  <title>?��??�詢 - ?��?資�??�詢</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="site-header">
-    <h1>報名資料查詢</h1>
-    <p class="subtitle">依區域 / 教室分類篩選，點擊分類檢視名單</p>
+    <h1>?��?資�??�詢</h1>
+    <p class="subtitle">依�???/ ?�室?��?篩選，�??��?類檢視�???/p>
   </header>
 
   <main class="container">
-    <!-- 活動分頁籤 -->
-    <nav class="activity-tabs" id="activityTabs" aria-label="活動選擇" role="tablist">
-      <!-- 動態產生 -->
+    <!-- 活�??��?�?-->
+    <nav class="activity-tabs" id="activityTabs" aria-label="活�??��?" role="tablist">
+      <!-- ?��??��? -->
     </nav>
 
-    <!-- 分類列 -->
+    <!-- ?��???-->
     <div class="category-bar" id="categoryBar" style="display:none;">
       <span class="category-label" id="categoryLabel"></span>
       <div class="category-tabs" id="categoryTabs"></div>
-      <button class="btn btn-secondary btn-sm" id="btnCopyLink" style="display:none;">複製分類連結</button>
+      <button class="btn btn-secondary btn-sm" id="btnCopyLink" style="display:none;">複製?��????</button>
     </div>
 
-    <!-- 密碼鎖 Modal -->
+    <!-- 密碼??Modal -->
     <dialog id="pwdModal" class="modal">
       <div class="modal-content">
         <header class="modal-header">
-          <h3 id="pwdModalTitle">此分類已鎖定</h3>
-          <button type="button" class="modal-close" id="pwdModalClose" aria-label="關閉">&times;</button>
+          <h3 id="pwdModalTitle">此�?類已?��?</h3>
+          <button type="button" class="modal-close" id="pwdModalClose" aria-label="?��?">&times;</button>
         </header>
         <div class="modal-body">
-          <p class="hint" id="pwdModalDesc">請輸入系統提供的密碼以檢視此分類。</p>
+          <p class="hint" id="pwdModalDesc">請輸?�系統�?供�?密碼以檢視此?��???/p>
           <div class="form-group">
-            <label for="categoryPwdInput">分類密碼</label>
+            <label for="categoryPwdInput">?��?密碼</label>
             <input type="password" id="categoryPwdInput" placeholder="輸入密碼" autocomplete="off">
           </div>
           <p class="hint" id="pwdModalHint"></p>
         </div>
         <footer class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="pwdModalCancel">取消</button>
-          <button type="button" class="btn btn-primary" id="pwdModalConfirm">解鎖查看</button>
+          <button type="button" class="btn btn-secondary" id="pwdModalCancel">?��?</button>
+          <button type="button" class="btn btn-primary" id="pwdModalConfirm">�???��?</button>
         </footer>
       </div>
     </dialog>
 
-    <!-- 查詢/篩選列 -->
+    <!-- ?�詢/篩選??-->
     <div class="search-bar" id="searchBar" style="display:none;">
-      <label for="searchInput" class="visually-hidden">關鍵字搜尋</label>
-      <input type="search" id="searchInput" placeholder="輸入姓名、單位… 即時篩選" autocomplete="off">
+      <label for="searchInput" class="visually-hidden">?�鍵字�?�?/label>
+      <input type="search" id="searchInput" placeholder="輸入姓�??�單位�??��?篩選" autocomplete="off">
       <span class="result-count" id="resultCount"></span>
     </div>
 
-    <!-- 資料表格區 -->
+    <!-- 資�?表格?� -->
     <section class="table-wrapper" id="tableWrapper" style="display:none;">
       <table id="dataTable" aria-live="polite">
         <thead id="tableHead"></thead>
         <tbody id="tableBody"></tbody>
       </table>
     </section>
-    <p class="empty-state" id="emptyState" style="display:none;">此分類尚無資料</p>
+    <p class="empty-state" id="emptyState" style="display:none;">此�?類�??��???/p>
 
-    <!-- 狀態列 -->
+    <!-- ?�?��? -->
     <footer class="status-bar" id="statusBar" aria-live="polite">
       <span id="lastUpdated"></span>
-      <a href="admin.html" class="admin-link">管理後台</a>
+      <a href="admin.html" class="admin-link">管�?後台</a>
     </footer>
   </main>
 
-  <script src="js/config.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/config.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>
+
