@@ -443,17 +443,20 @@ function renderDataTable(fields, filteredRows) {
     th.scope = 'col';
     th.className = 'sortable';
     th.title = f + '（點擊排序）';
+    const inner = document.createElement('span');
+    inner.className = 'th-inner';
     const label = document.createElement('span');
     label.className = 'th-label';
     label.textContent = f;
-    th.appendChild(label);
+    inner.appendChild(label);
     if (sortState.field === f) {
       th.classList.add('sorted', sortState.dir);
       const arrow = document.createElement('span');
       arrow.className = 'sort-arrow';
       arrow.textContent = sortState.dir === 'asc' ? ' ▲' : ' ▼';
-      th.appendChild(arrow);
+      inner.appendChild(arrow);
     }
+    th.appendChild(inner);
     th.addEventListener('click', () => handleSort(f));
     tr.appendChild(th);
   });
