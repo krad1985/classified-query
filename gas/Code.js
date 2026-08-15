@@ -407,7 +407,7 @@ function handleGetConfig(params) {
     role: 'admin',
     config: {
       activities: getAllActivities(),
-      units: units.map(u => ({ id: u.id, name: u.name })),
+      units: units.map(u => ({ id: u.id, name: u.name, token: u.token || '' })),
       publicToken: index.publicToken || ''
     }
   };

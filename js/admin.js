@@ -280,6 +280,7 @@ function renderActivityList() {
         </span>
       </div>
       <div class="activity-item-actions">
+        <button class="btn btn-secondary btn-sm" data-copylink="${act.id}">複製連結</button>
         <button class="btn btn-secondary btn-sm" data-edit="${act.id}">編輯</button>
         <button class="btn btn-danger btn-sm" data-delete="${act.id}">刪除</button>
       </div>
@@ -293,6 +294,41 @@ function renderActivityList() {
   activityListEl.querySelectorAll('[data-delete]').forEach(btn =>
     btn.addEventListener('click', () => handleDelete(btn.dataset.delete))
   );
+  activityListEl.querySelectorAll('[data-copylink]').forEach(btn =>
+    btn.addEventListener('click', () => copyActivityLink(btn.dataset.copylink))
+  );
+}
+
+// 產生檢視頁活動連結（單位活動需帶 unit + unitToken 才能被檢視）
+function buildActivityLink(act) {
+  const base = location.origin + location.pathname.replace(/admin\.html$/, 'index.html');
+  const url = new URL(base);
+  url.searchParams.set('act', act.id);
+  if (act.unit) {
+    url.searchParams.set('unit', act.unit);
+    const unit = adminUnits.find(u => u.id === act.unit);
+    if (unit?.token) url.searchParams.set('unitToken', unit.token);
+  }
+  return url.toString();
+}
+
+// 複製活動連結到剪貼簿
+async function copyActivityLink(actId) {
+  const act = activities.find(a => a.id === actId);
+  if (!act) return;
+  const link = buildActivityLink(act);
+  try {
+    await navigator.clipboard.writeText(link);
+    const btn = activityListEl.querySelector(`[data-copylink="${cssEsc(actId)}"]`);
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '已複製 ✓';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    }
+  } catch (err) {
+    // clipboard API 不可用時退回 prompt（舊瀏覽器）
+    window.prompt('請複製此活動連結', link);
+  }
 }
 
 // Modal 開啟/關閉
