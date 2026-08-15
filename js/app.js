@@ -70,7 +70,7 @@ async function init() {
     const params = new URLSearchParams(location.search);
     const urlAct = params.get('act');
     const urlCat = params.get('cat');
-    const urlKey = params.get('key'); // 活動金鑰（選擇性，C 模式）
+    const urlKey = params.get('key'); // 活動金鑰（選擇性）
 
     // 單位參數：URL 優先，其次 config.js
     activeUnit = params.get('unit') || (typeof CONFIG !== 'undefined' && CONFIG.UNIT) || '';
@@ -151,7 +151,7 @@ async function loadActivityInfo(actId) {
   if (key) params.key = key;
   const res = await fetchJSON('getActivityInfo', params);
   if (!res.ok) {
-    // C 模式：金鑰不足 → 彈出金鑰解鎖框，回傳 false
+    // 活動需金鑰 → 彈出金鑰解鎖框，回傳 false
     if (res.code === 'NEED_KEY') {
       requestActivityKey(actId);
       activityInfo = null;
@@ -257,7 +257,7 @@ function requestPassword(cat) {
   setTimeout(() => categoryPwdInput.focus(), 100);
 }
 
-// 活動金鑰解鎖（C 模式）
+// 活動金鑰解鎖
 function requestActivityKey(actId) {
   const act = activities.find(a => a.id === actId);
   keyModalTitle.textContent = `開啟「${act ? act.name : '活動'}」`;

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
   <header class="site-header">
@@ -104,7 +104,7 @@
             <div class="form-group">
               <label for="actAccessKey">存取金鑰（選填）</label>
               <input type="text" id="actAccessKey" placeholder="留空＝公開（僅顯示隔離）；填寫＝需金鑰才能開啟">
-              <p class="hint">留空為 A 模式（僅單位隔離）；填寫後訪客開啟此活動需輸入金鑰（C 模式）。</p>
+              <p class="hint">留空：訪客開啟名冊即可查看，但受保護的分類仍需輸入分類密碼。填寫：訪客開啟此活動需先輸入存取金鑰。</p>
             </div>
             <div class="form-group">
               <label for="actSheetUrl">Google Sheets 網址 <span class="required">*</span></label>
@@ -120,7 +120,12 @@
               <p class="hint">選擇要用來「分類／區域／教室」的欄位（例如母班區域、教室、縣市等）</p>
             </div>
             <fieldset class="form-group">
-              <legend>顯示欄位（勾選並排序）<span class="required">*</span></legend>
+              <legend>顯示欄位（勾選並排序）<span class="required">*</span>
+                <span class="legend-actions">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSelectAllFields">全選</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnClearFields">清除</button>
+                </span>
+              </legend>
               <p class="hint">勾選要在名冊中顯示的欄位，用 ▲ ▼ 調整欄位順序。</p>
               <ul id="fieldSortList" class="field-sort-list"></ul>
               <p class="hint" id="fieldSortHint"></p>
@@ -184,7 +189,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=20"></script>
-  <script src="js/admin.js?v=20"></script>
+  <script src="js/config.js?v=21"></script>
+  <script src="js/admin.js?v=21"></script>
 </body>
 </html>

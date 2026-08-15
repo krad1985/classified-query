@@ -84,6 +84,20 @@ function init() {
 
   btnChangePwd.addEventListener('click', handleChangePassword);
   btnCreateUnit.addEventListener('click', handleCreateUnit);
+  document.getElementById('btnSelectAllFields').addEventListener('click', selectAllFields);
+  document.getElementById('btnClearFields').addEventListener('click', clearFields);
+}
+
+// 一鍵全選顯示欄位（依 availableFields 順序）
+function selectAllFields() {
+  selectedFields = [...availableFields];
+  renderFieldSortList();
+}
+
+// 一鍵清除顯示欄位
+function clearFields() {
+  selectedFields = [];
+  renderFieldSortList();
 }
 
 // 登入角色切換
@@ -368,12 +382,9 @@ function openModal(actId = null) {
       selectedFields = existing.length ? [...existing] : [];
       handleTestConnection(true).then(() => {
         actCategoryField.value = act.categoryField || '';
-        // 若 selectedFields 尚未建立（活動無顯示欄位），預設全選
+        // 若活動無顯示欄位，預設全選；否則保留既有選取（renderFieldSortList 會補上未勾選的新欄位）
         if (existing.length === 0) {
           selectedFields = [...availableFields];
-        } else {
-          // 補上試算表新增的欄位（排在後方）
-          availableFields.forEach(f => { if (!selectedFields.includes(f)) selectedFields.push(f); });
         }
         renderFieldSortList();
         updateCategoryValues();

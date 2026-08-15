@@ -140,7 +140,7 @@ function authorizeActivity(params, activity) {
     return { ok: false, code: 'BAD_TOKEN', error: 'Token 驗證失敗' };
   }
 
-  // 活動金鑰：accessKey 非空白時需 key 相符（C 模式）；空白則僅顯示隔離（A 模式）
+  // 活動金鑰：accessKey 非空白時需 key 相符；空白則僅顯示隔離
   const accessKey = activity.accessKey || '';
   if (accessKey && key !== accessKey) {
     return { ok: false, code: 'NEED_KEY', error: '此活動需輸入存取金鑰' };
@@ -402,12 +402,18 @@ function handleGetConfig(params) {
 
   const index = getConfigIndex();
   const units = index.units.map(id => getUnitById(id)).filter(u => u);
+  const allActivities = getAllActivities();
   return {
     ok: true,
     role: 'admin',
     config: {
-      activities: getAllActivities(),
-      units: units.map(u => ({ id: u.id, name: u.name, token: u.token || '' })),
+      activities: allActivities,
+      units: units.map(u => ({
+        id: u.id,
+        name: u.name,
+        token: u.token || '',
+        activityCount: allActivities.filter(a => a.unit === u.id).length
+      })),
       publicToken: index.publicToken || ''
     }
   };
