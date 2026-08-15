@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=14">
+  <link rel="stylesheet" href="css/style.css?v=17">
 </head>
 <body>
   <header class="site-header">
@@ -34,9 +34,11 @@
         </select>
       </div>
       <div class="form-group" id="loginUnitGroup" style="display:none;">
-        <label for="loginUnit">單位 ID</label>
-        <input type="text" id="loginUnit" placeholder="由總管理員建立單位時提供">
-        <p class="hint">單位管理員請向總管理員索取您的單位 ID。</p>
+        <label for="loginUnit">所屬單位</label>
+        <select id="loginUnit">
+          <option value="">（載入中…）</option>
+        </select>
+        <p class="hint">選擇您所屬的單位，再輸入單位管理密碼。</p>
       </div>
       <div class="form-group">
         <label for="adminPwd">密碼</label>
@@ -182,7 +184,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=14"></script>
-  <script src="js/admin.js?v=14"></script>
+  <script src="js/config.js?v=17"></script>
+  <script src="js/admin.js?v=17"></script>
 </body>
 </html>

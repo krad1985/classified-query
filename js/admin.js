@@ -91,6 +91,20 @@ function handleLoginRoleChange() {
   const isUnit = loginRoleSelect.value === 'unit';
   loginUnitGroup.style.display = isUnit ? 'block' : 'none';
   adminPwdInput.placeholder = isUnit ? '單位管理密碼' : '總管理員密碼';
+  if (isUnit) loadUnitsForLogin();
+}
+
+// 載入單位清單供登入下拉選單（公開端點，不需密碼）
+async function loadUnitsForLogin() {
+  try {
+    const res = await api('listUnitsPublic');
+    if (!res.ok || !res.units) throw new Error(res.error || '載入單位失敗');
+    loginUnitSelect.innerHTML = res.units.length
+      ? res.units.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name)}</option>`).join('')
+      : '<option value="">（尚無單位，請先請總管理員建立）</option>';
+  } catch (err) {
+    loginUnitSelect.innerHTML = '<option value="">（載入失敗，請稍後再試）</option>';
+  }
 }
 
 // 登入
@@ -196,7 +210,8 @@ function renderUnitList() {
       <div class="activity-item-info">
         <span class="activity-item-name">${escapeHtml(u.name)}</span>
         <span class="activity-item-meta">
-          活動數: ${u.activityCount ?? 0}
+          單位 ID：<code style="word-break:break-all;">${escapeHtml(u.id)}</code>
+          · 活動數: ${u.activityCount ?? 0}
           ${u.token ? ` · Token: <code style="word-break:break-all;">${escapeHtml(u.token)}</code>` : ''}
         </span>
       </div>

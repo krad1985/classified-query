@@ -46,6 +46,9 @@ function doGet(e) {
       case 'unit_login':
         result = handleUnitLogin(e.parameter);
         break;
+      case 'listUnitsPublic':
+        result = handleListUnitsPublic(e.parameter);
+        break;
       case 'getConfig':
         result = handleGetConfig(e.parameter);
         break;
@@ -440,7 +443,20 @@ function handleCreateUnit(params) {
 }
 
 /**
- * 列出所有單位（總管理員限定）
+ * 公開列出單位（不需密碼）：供後台登入頁的下拉選單使用
+ * 僅回傳 id/name，不含 token 等敏感資訊
+ */
+function handleListUnitsPublic(params) {
+  const index = getConfigIndex();
+  const units = index.units.map(id => getUnitById(id)).filter(u => u);
+  return {
+    ok: true,
+    units: units.map(u => ({ id: u.id, name: u.name }))
+  };
+}
+
+/**
+ * 列出單位（總管理員限定）
  */
 function handleListUnits(params) {
   if (!verifyAdminPassword(params.pwd)) return { ok: false, error: '管理密碼錯誤' };
