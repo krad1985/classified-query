@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=10">
+  <link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
   <header class="site-header">
@@ -93,9 +93,6 @@
       </div>
     </div>
 
-    <!-- 分類摘要卡片（未選分類時顯示） -->
-    <section class="category-summary" id="categorySummary" style="display:none;" aria-live="polite"></section>
-
     <!-- 資料表格區 -->
     <section class="table-wrapper" id="tableWrapper" style="display:none;">
       <table id="dataTable" aria-live="polite">
@@ -103,6 +100,10 @@
         <tbody id="tableBody"></tbody>
       </table>
     </section>
+    <!-- 水平捲軸（表格寬度超出時顯示） -->
+    <div class="table-hscroll" id="tableHscroll" style="display:none;" aria-hidden="true">
+      <div class="table-hscroll-track" id="tableHscrollTrack"></div>
+    </div>
     <!-- 名單卡片區（欄位少於 5 時使用） -->
     <section class="card-list" id="cardList" style="display:none;" aria-live="polite"></section>
     <p class="empty-state" id="emptyState" style="display:none;">此分類暫無資料。</p>
@@ -114,7 +115,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=10"></script>
-  <script src="js/app.js?v=10"></script>
+  <script src="js/config.js?v=11"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>

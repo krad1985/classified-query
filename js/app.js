@@ -37,7 +37,8 @@ const tableBodyEl = document.getElementById('tableBody');
 const cardListEl = document.getElementById('cardList');
 const emptyStateEl = document.getElementById('emptyState');
 const tableWrapperEl = document.getElementById('tableWrapper');
-const categorySummaryEl = document.getElementById('categorySummary');
+const tableHscrollEl = document.getElementById('tableHscroll');
+const tableHscrollTrackEl = document.getElementById('tableHscrollTrack');
 const lastUpdatedEl = document.getElementById('lastUpdated');
 const pwdModal = document.getElementById('pwdModal');
 const pwdModalTitle = document.getElementById('pwdModalTitle');
@@ -106,6 +107,7 @@ async function init() {
     }
     setupSearch();
     setupModalEvents();
+    setupHscroll();
   } catch (err) {
     console.error('初始化失敗:', err);
     showError('無法載入資料，請稍後再試');
@@ -413,8 +415,6 @@ function renderTable() {
 
   tableWrapperEl.style.display = 'none';
   cardListEl.style.display = 'none';
-  categorySummaryEl.style.display = 'none';
-  categorySummaryEl.innerHTML = '';
 
   if (filteredRows.length === 0) {
     renderTableEmpty('此分類尚無資料');
@@ -425,6 +425,7 @@ function renderTable() {
 
   // 欄位少於 5 欄 → 左右雙欄名單卡片；否則全寬表格
   if (fields.length > 0 && fields.length < 5) {
+    tableHscrollEl.style.display = 'none';
     renderCardList(fields, filteredRows);
   } else {
     renderDataTable(fields, filteredRows);
@@ -441,7 +442,7 @@ function renderDataTable(fields, filteredRows) {
     const th = document.createElement('th');
     th.scope = 'col';
     th.className = 'sortable';
-    th.title = '點擊排序';
+    th.title = f + '（點擊排序）';
     const label = document.createElement('span');
     label.className = 'th-label';
     label.textContent = f;
@@ -463,11 +464,38 @@ function renderDataTable(fields, filteredRows) {
     const tr = document.createElement('tr');
     row.forEach(cell => {
       const td = document.createElement('td');
-      td.textContent = cell ?? '';
+      const text = cell ?? '';
+      td.textContent = text;
+      if (String(text).length > 24) td.title = String(text);
       tr.appendChild(td);
     });
     tableBodyEl.appendChild(tr);
   });
+
+  syncHscroll();
+}
+
+// 獨立水平捲軸：與表格捲動雙向同步
+function setupHscroll() {
+  tableWrapperEl.addEventListener('scroll', () => {
+    if (tableHscrollEl.style.display !== 'none') {
+      tableHscrollEl.scrollLeft = tableWrapperEl.scrollLeft;
+    }
+  });
+  tableHscrollEl.addEventListener('scroll', () => {
+    tableWrapperEl.scrollLeft = tableHscrollEl.scrollLeft;
+  });
+  window.addEventListener('resize', syncHscroll);
+}
+
+function syncHscroll() {
+  const wrapper = tableWrapperEl;
+  if (wrapper.scrollWidth > wrapper.clientWidth + 1) {
+    tableHscrollTrackEl.style.width = wrapper.scrollWidth + 'px';
+    tableHscrollEl.style.display = 'block';
+  } else {
+    tableHscrollEl.style.display = 'none';
+  }
 }
 
 // 欄位少（<5）：左右雙欄名單卡片
@@ -573,38 +601,11 @@ function renderTableEmpty(msg) {
   emptyStateEl.style.display = 'block';
   tableWrapperEl.style.display = 'none';
   cardListEl.style.display = 'none';
+  tableHscrollEl.style.display = 'none';
   resultCountEl.textContent = '';
   currentData = { fields: [], rows: [] };
   btnExportCsv.style.display = 'none';
   searchBarEl.style.display = 'none';
-  renderCategorySummary();
-}
-
-// B：分類摘要卡片——未選分類時顯示各分類的概覽卡片
-function renderCategorySummary() {
-  if (!activityInfo || categories.length === 0 || currentCategory) {
-    categorySummaryEl.style.display = 'none';
-    categorySummaryEl.innerHTML = '';
-    return;
-  }
-  categorySummaryEl.style.display = 'grid';
-  const kw = categoryFilter.trim().toLowerCase();
-  const visible = categories.filter(c => !kw || c.name.toLowerCase().includes(kw));
-  categorySummaryEl.innerHTML = visible.map(c => {
-    const locked = c.locked;
-    const unlocked = locked && unlockedCats.has(c.name);
-    return `
-    <button type="button" class="summary-card ${locked ? 'locked' : ''} ${unlocked ? 'unlocked' : ''}" data-summary-cat="${escapeHtml(c.name)}">
-      <span class="summary-card-name">${escapeHtml(c.name)}</span>
-      <span class="summary-card-count">${c.count} 筆</span>
-      <span class="summary-card-lock">${locked ? (unlocked ? '🔓 已解鎖' : '🔒 需密碼') : ''}</span>
-    </button>
-  `;
-  }).join('');
-
-  categorySummaryEl.querySelectorAll('[data-summary-cat]').forEach(btn =>
-    btn.addEventListener('click', () => switchCategory(btn.dataset.summaryCat))
-  );
 }
 
 // 匯出目前分類（含關鍵字過濾）為 CSV
@@ -717,6 +718,7 @@ function showError(msg) {
   emptyStateEl.style.display = 'block';
   tableWrapperEl.style.display = 'none';
   cardListEl.style.display = 'none';
+  tableHscrollEl.style.display = 'none';
   searchBarEl.style.display = 'none';
 }
 
