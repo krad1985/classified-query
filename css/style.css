@@ -263,7 +263,22 @@ thead th {
   max-width: 280px;
   overflow-wrap: anywhere;
   box-shadow: 0 1px 0 var(--line-strong);
+  display: flex;
+  align-items: flex-start;
+  gap: .3rem;
+  line-height: 1.55;
 }
+thead th .th-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+thead th .sort-arrow { flex-shrink: 0; white-space: nowrap; }
 thead th:first-child { border-left: none; }
 /* 可排序標題 */
 thead th.sortable {
