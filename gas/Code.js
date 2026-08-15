@@ -393,8 +393,8 @@ function handleGetConfig(params) {
     return {
       ok: true,
       role: 'unit',
-      unit: { id: unit.id, name: unit.name },
-      config: { activities }
+      unit: { id: unit.id, name: unit.name, token: unit.token || '' },
+      config: { activities, units: [{ id: unit.id, name: unit.name, token: unit.token || '' }] }
     };
   }
 

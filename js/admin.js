@@ -171,7 +171,7 @@ async function loadActivities() {
     const res = await api('getConfig', params);
     if (!res.ok) throw new Error(res.error || '載入失敗');
     activities = res.config?.activities || [];
-    adminUnits = res.config?.units || [];
+    if (res.config?.units) adminUnits = res.config.units;
     renderActivityList();
     if (adminRole === 'admin') renderUnitList();
   } catch (err) {
