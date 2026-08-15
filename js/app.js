@@ -32,6 +32,7 @@ const searchBarEl = document.getElementById('searchBar');
 const searchInput = document.getElementById('searchInput');
 const resultCountEl = document.getElementById('resultCount');
 const btnExportCsv = document.getElementById('btnExportCsv');
+const tableEl = document.getElementById('dataTable');
 const tableHeadEl = document.getElementById('tableHead');
 const tableBodyEl = document.getElementById('tableBody');
 const cardListEl = document.getElementById('cardList');
@@ -57,6 +58,7 @@ let categoryFilter = '';
 // 排序狀態：{ field, dir }；field 為 '' 表示不排序（依原始順序）
 // userTouched 為 true 表示訪客已手動排序，之後載入資料不再覆蓋
 let sortState = { field: '', dir: 'asc', userTouched: false };
+let currentFields = []; // 目前表格的欄位清單（供欄寬調整）
 
 // 目標分類（等待解鎖）
 let pendingCategory = null;
@@ -434,11 +436,13 @@ function renderTable() {
 
 // 欄位多（>=5）：全寬表格
 function renderDataTable(fields, filteredRows) {
+  currentFields = fields;
   tableWrapperEl.style.display = 'block';
+  buildColgroup(fields);
 
   tableHeadEl.innerHTML = '';
   const tr = document.createElement('tr');
-  fields.forEach(f => {
+  fields.forEach((f, i) => {
     const th = document.createElement('th');
     th.scope = 'col';
     th.className = 'sortable';
@@ -459,6 +463,14 @@ function renderDataTable(fields, filteredRows) {
     th.appendChild(inner);
     th.addEventListener('click', () => handleSort(f));
     tr.appendChild(th);
+
+    // 欄寬拖曳把手（只在可捲動的寬表格提供）
+    const grip = document.createElement('span');
+    grip.className = 'col-grip';
+    grip.title = '拖曳調整欄寬';
+    grip.addEventListener('pointerdown', e => startColResize(e, i));
+    grip.addEventListener('click', e => e.stopPropagation());
+    th.appendChild(grip);
   });
   tableHeadEl.appendChild(tr);
 
@@ -500,6 +512,108 @@ function syncHscroll() {
     tableHscrollEl.style.display = 'none';
   }
 }
+
+// ── 可調欄寬（colgroup 方案，拖曳只改 <col> 寬度，rAF 節流）──
+const COL_MIN = 120;   // 最小欄寬 px
+const COL_MAX = 640;   // 最大欄寬 px
+const COLW_KEY_PREFIX = 'cq_colw_';
+let activeCols = [];   // 目前表格各欄的 <col> 元素（對應 fields）
+let customColsOn = false; // 是否已啟用固定欄寬（使用者調整過）
+let resizeSession = null; // 進行中的拖曳 { index, startX, startW }
+
+function colwKey() { return COLW_KEY_PREFIX + (currentActivityId || 'default'); }
+function loadColWidths() {
+  try {
+    const raw = localStorage.getItem(colwKey());
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+function saveColWidths(map) {
+  try { localStorage.setItem(colwKey(), JSON.stringify(map)); } catch (e) {}
+}
+function clampColW(w) { return Math.max(COL_MIN, Math.min(COL_MAX, Math.round(w))); }
+
+// 建立 colgroup；若已有儲存寬度則套用並啟用 fixed 排版
+function buildColgroup(fields) {
+  let cg = tableEl.querySelector('colgroup');
+  if (!cg) { cg = document.createElement('colgroup'); tableEl.insertBefore(cg, tableEl.firstChild); }
+  cg.innerHTML = '';
+  activeCols = [];
+  const saved = loadColWidths();
+  customColsOn = fields.some(f => saved[f]);
+  tableEl.classList.toggle('fixed-cols', customColsOn);
+  fields.forEach(f => {
+    const col = document.createElement('col');
+    if (saved[f]) col.style.width = saved[f] + 'px';
+    cg.appendChild(col);
+    activeCols.push(col);
+  });
+  if (customColsOn) syncTableWidth();
+}
+
+// 首次拖曳：把所有欄目前的實際寬度快照進 colgroup，切換 fixed 排版
+function enableFixedCols(fields) {
+  const ths = [...tableHeadEl.querySelectorAll('th')];
+  const saved = loadColWidths();
+  fields.forEach((f, i) => {
+    if (!saved[f]) saved[f] = Math.round(ths[i].getBoundingClientRect().width);
+  });
+  saveColWidths(saved);
+  customColsOn = true;
+  tableEl.classList.add('fixed-cols');
+  activeCols.forEach((col, i) => {
+    if (!col.style.width && saved[fields[i]]) col.style.width = saved[fields[i]] + 'px';
+  });
+  syncTableWidth();
+}
+
+// 表格寬度 = 各欄寬度總和（fixed-cols 下精準，不讓 max-content 內容撐開）
+function syncTableWidth() {
+  const total = activeCols.reduce((sum, col) => sum + (parseFloat(col.style.width) || 0), 0);
+  tableEl.style.width = (total > 0 ? total : '') + (total > 0 ? 'px' : '');
+}
+
+function startColResize(e, i) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.button !== 0) return;
+  if (!customColsOn) enableFixedCols(currentFields);
+  resizeSession = { index: i, startX: e.clientX, startW: parseFloat(activeCols[i].style.width) };
+  tableEl.classList.add('col-resizing');
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  window.addEventListener('pointermove', onColResizeMove);
+  window.addEventListener('pointerup', endColResize);
+  window.addEventListener('pointercancel', endColResize);
+}
+
+let resizeRaf = null;
+function onColResizeMove(e) {
+  const session = resizeSession;
+  if (!session) return;
+  if (resizeRaf) return;
+  resizeRaf = requestAnimationFrame(() => {
+    resizeRaf = null;
+    const w = clampColW(session.startW + (e.clientX - session.startX));
+    activeCols[session.index].style.width = w + 'px';
+    const saved = loadColWidths();
+    saved[currentFields[session.index]] = w;
+    saveColWidths(saved);
+    syncTableWidth();
+    syncHscroll();
+  });
+}
+function endColResize() {
+  if (resizeRaf) { cancelAnimationFrame(resizeRaf); resizeRaf = null; }
+  resizeSession = null;
+  tableEl.classList.remove('col-resizing');
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  window.removeEventListener('pointermove', onColResizeMove);
+  window.removeEventListener('pointerup', endColResize);
+  window.removeEventListener('pointercancel', endColResize);
+}
+
 
 // 欄位少（<5）：左右雙欄名單卡片
 function renderCardList(fields, rows) {

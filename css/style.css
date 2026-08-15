@@ -249,6 +249,14 @@ table {
   font-size: .9rem;
   table-layout: auto;
 }
+/* 使用者調整過欄寬：改用 colgroup 精準控寬（表格寬度由 JS 設定） */
+table.fixed-cols { table-layout: fixed; }
+table.fixed-cols col { width: auto; }
+table.fixed-cols tbody td { overflow: hidden; text-overflow: ellipsis; }
+table.fixed-cols thead th { max-width: none; }
+table.fixed-cols .th-inner { max-width: none; }
+table.col-resizing, table.col-resizing * { cursor: col-resize !important; user-select: none; }
+
 thead th {
   position: sticky; top: 0;
   background: var(--paper-deep);
@@ -264,8 +272,7 @@ thead th {
   overflow-wrap: anywhere;
   box-shadow: 0 1px 0 var(--line-strong);
   vertical-align: bottom;
-}
-thead th .th-inner {
+}thead th .th-inner {
   display: flex;
   align-items: flex-end;
   gap: .3rem;
@@ -284,6 +291,27 @@ thead th .th-label {
 }
 thead th .sort-arrow { flex-shrink: 0; white-space: nowrap; }
 thead th:first-child { border-left: none; }
+/* 欄寬拖曳把手 */
+.col-grip {
+  position: absolute;
+  top: 0; bottom: 0; right: -5px;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity .15s;
+}
+thead th:hover .col-grip { opacity: 1; }
+.col-grip::after {
+  content: '';
+  position: absolute;
+  top: 15%; bottom: 15%; right: 4px;
+  width: 2px;
+  background: var(--line-strong);
+  transition: background .15s;
+}
+.col-grip:hover::after { background: var(--cinnabar); }
 /* 可排序標題 */
 thead th.sortable {
   cursor: pointer;
