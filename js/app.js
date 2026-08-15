@@ -782,7 +782,8 @@ function printRoster() {
     '<tr>' + r.map(c => `<td>${escHtml(c)}</td>`).join('') + '</tr>'
   ).join('') + '</tbody>';
 
-  const win = window.open('', '_blank', 'noopener');
+  // 不用 noopener：它會讓 window.open 回傳 null，導致無法寫入與列印
+  const win = window.open('', '_blank');
   if (!win) { alert('請允許彈出視窗以列印名冊'); return; }
   win.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
 <title>${escHtml(actName)} ${escHtml(catName)} 名冊</title>
