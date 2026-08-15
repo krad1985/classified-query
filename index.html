@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=14">
+  <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
   <header class="site-header">
@@ -89,6 +89,7 @@
       <input type="search" id="searchInput" placeholder="輸入姓名、班級等關鍵字篩選" autocomplete="off">
       <span class="result-count" id="resultCount"></span>
       <div class="search-actions">
+        <button class="btn btn-secondary btn-sm" id="btnPrintRoster" style="display:none;" title="開啟列印視窗（可另存為 PDF）">列印名冊</button>
         <button class="btn btn-secondary btn-sm" id="btnExportCsv" style="display:none;">匯出名冊</button>
       </div>
     </div>
@@ -115,7 +116,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=14"></script>
-  <script src="js/app.js?v=14"></script>
+  <script src="js/config.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
 </body>
 </html>

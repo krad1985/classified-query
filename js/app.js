@@ -32,6 +32,7 @@ const searchBarEl = document.getElementById('searchBar');
 const searchInput = document.getElementById('searchInput');
 const resultCountEl = document.getElementById('resultCount');
 const btnExportCsv = document.getElementById('btnExportCsv');
+const btnPrintRoster = document.getElementById('btnPrintRoster');
 const tableEl = document.getElementById('dataTable');
 const tableHeadEl = document.getElementById('tableHead');
 const tableBodyEl = document.getElementById('tableBody');
@@ -220,6 +221,7 @@ async function loadData(cat = '', pwd = '') {
     searchBarEl.style.display = 'flex';
     btnCopyLink.style.display = currentCategory ? 'inline-flex' : 'none';
     btnExportCsv.style.display = 'inline-flex';
+    btnPrintRoster.style.display = 'inline-flex';
     renderCategoryTabs(); // 更新鎖定圖示
   } catch (err) {
     console.error('載入資料失敗:', err);
@@ -311,6 +313,7 @@ async function confirmUnlock() {
     searchBarEl.style.display = 'flex';
     btnCopyLink.style.display = currentCategory ? 'inline-flex' : 'none';
     btnExportCsv.style.display = 'inline-flex';
+    btnPrintRoster.style.display = 'inline-flex';
     renderCategoryTabs(); // 更新鎖定圖示
   } catch (err) {
     showHint(pwdModalHint, err.message, true);
@@ -722,10 +725,11 @@ function renderTableEmpty(msg) {
   resultCountEl.textContent = '';
   currentData = { fields: [], rows: [] };
   btnExportCsv.style.display = 'none';
+  btnPrintRoster.style.display = 'none';
   searchBarEl.style.display = 'none';
 }
 
-// 匯出目前分類（含關鍵字過濾）為 CSV
+// 匯出目前分類（含關鍵字過濾）為 CSV，首列為標題（活動名稱＋分類名稱＋時間）
 function exportCsv() {
   const { fields, rows } = currentData;
   const filteredRows = getFilteredRows();
@@ -737,7 +741,13 @@ function exportCsv() {
     const s = v == null ? '' : String(v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
+  const actName = activityInfo?.name || '名冊';
+  const catName = currentCategory || '全部';
+  const now = new Date().toLocaleString('zh-TW', { hour12: false });
   const lines = [];
+  // 標題列（活動名稱｜分類｜匯出時間）
+  lines.push([esc(actName), esc(catName), esc(now)].join(','));
+  lines.push('');
   lines.push(fields.map(esc).join(','));
   filteredRows.forEach(r => lines.push(r.map(esc).join(',')));
   const csv = '\uFEFF' + lines.join('\r\n'); // BOM 讓 Excel 正確辨識 UTF-8
@@ -745,7 +755,6 @@ function exportCsv() {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const actName = activityInfo?.name || '名冊';
   const catPart = currentCategory ? `_${currentCategory}` : '_全部';
   a.href = url;
   a.download = `${actName}${catPart}.csv`;
@@ -753,6 +762,60 @@ function exportCsv() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// 列印名冊：開啟乾淨的列印視窗（有格線、標題），管理者可分批印各分類紙本或存 PDF
+function printRoster() {
+  const { fields, rows } = currentData;
+  const filteredRows = getFilteredRows();
+  if (filteredRows.length === 0) {
+    alert('目前沒有可列印的資料');
+    return;
+  }
+  const escHtml = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const actName = activityInfo?.name || '名冊';
+  const catName = currentCategory || '全部';
+  const now = new Date().toLocaleString('zh-TW', { hour12: false });
+
+  const thead = '<thead><tr>' + fields.map(f => `<th>${escHtml(f)}</th>`).join('') + '</tr></thead>';
+  const tbody = '<tbody>' + filteredRows.map(r =>
+    '<tr>' + r.map(c => `<td>${escHtml(c)}</td>`).join('') + '</tr>'
+  ).join('') + '</tbody>';
+
+  const win = window.open('', '_blank', 'noopener');
+  if (!win) { alert('請允許彈出視窗以列印名冊'); return; }
+  win.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+<title>${escHtml(actName)} ${escHtml(catName)} 名冊</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; color: #222; padding: 24px; }
+  @page { size: A4 landscape; margin: 12mm; }
+  .print-head { margin-bottom: 12px; }
+  .print-head h1 { font-size: 22px; margin-bottom: 4px; }
+  .print-head .sub { font-size: 13px; color: #444; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { border: 1px solid #444; padding: 4px 6px; text-align: left; vertical-align: top; word-break: break-all; }
+  thead th { background: #f0efe9; position: sticky; top: 0; }
+  thead { display: table-header-group; } /* 跨頁重複表頭 */
+  tr { break-inside: avoid; }
+  @media print {
+    .no-print { display: none; }
+    body { padding: 0; }
+  }
+</style></head><body>
+  <div class="print-head">
+    <h1>${escHtml(actName)}　${escHtml(catName)}名冊</h1>
+    <div class="sub">匯出時間：${escHtml(now)}　｜　共 ${filteredRows.length} 筆</div>
+  </div>
+  <table>${thead}${tbody}</table>
+  <div class="no-print" style="margin-top:14px; font-size:12px; color:#888;">
+    提示：請在列印對話框選擇「另存為 PDF」即可輸出 PDF 檔；紙張建議選 A4 橫向。
+  </div>
+</body></html>`);
+  win.document.close();
+  win.focus();
+  // 等字型/渲染穩定後再呼叫列印
+  setTimeout(() => { try { win.print(); } catch (e) {} }, 250);
 }
 
 // 關鍵字篩選
@@ -851,6 +914,7 @@ function setupModalEvents() {
   document.getElementById('activityKeyInput').addEventListener('keydown', e => e.key === 'Enter' && confirmActivityKey());
   btnCopyLink.addEventListener('click', copyCategoryLink);
   btnExportCsv.addEventListener('click', exportCsv);
+btnPrintRoster.addEventListener('click', printRoster);
 }
 
 // 統一 fetch 包裝
