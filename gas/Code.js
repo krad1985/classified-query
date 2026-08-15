@@ -137,7 +137,7 @@ function authorizeActivity(params, activity) {
   const unitToken = activity.unit ? (getUnitById(activity.unit)?.token || '') : '';
   const validToken = activity.unit ? unitToken : (index.publicToken || '');
   if (validToken && token !== validToken) {
-    return { ok: false, error: 'Token 驗證失敗' };
+    return { ok: false, code: 'BAD_TOKEN', error: 'Token 驗證失敗' };
   }
 
   // 活動金鑰：accessKey 非空白時需 key 相符（C 模式）；空白則僅顯示隔離（A 模式）
@@ -156,7 +156,7 @@ function handleGetActivityInfo(params) {
   if (!activity) return { ok: false, error: '找不到該活動' };
 
   const auth = authorizeActivity(params, activity);
-  if (!auth.ok) return { ok: false, code: auth.code, error: auth.error };
+  if (!auth.ok) return { ok: false, code: auth.code || undefined, error: auth.error };
 
   // 讀取試算表取得分類清單
   const data = readSpreadsheetData(activity);
@@ -367,7 +367,7 @@ function handleUnitLogin(params) {
   const unit = getUnitById(unitId);
   if (!unit) return { ok: false, error: '找不到該單位' };
   if (!verifyUnitAdminPassword(unit, pwd)) return { ok: false, error: '單位管理密碼錯誤' };
-  return { ok: true, unit: { id: unit.id, name: unit.name } };
+  return { ok: true, unit: { id: unit.id, name: unit.name, token: unit.token || '' } };
 }
 
 /**

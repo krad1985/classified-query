@@ -1,6 +1,6 @@
 // 前端設定 - 請勿直接修改此檔案，部署時由建置流程注入
 const CONFIG = {
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxSwfUS-mBAjeTGg6SPcVc9i1iqtsfaMhaVrGH2fjbUEIwfDGKDFnAQx-Kn0qwIYBS3FQ/exec',
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbxgrnfKYrPapA2zBbH3PqsaVMKzLz5F1gSbLkHfMxaGk47jeOh_V1VCi63cZJupwgfb1g/exec',
   // PUBLIC_TOKEN 會在首次載入活動列表時從 GAS 取得，並儲存於 sessionStorage
   // 單位隔離（選填）：固定此查詢頁只能看到該單位的活動
   // 若未設定，可於網址加 ?unit=<id>&unitToken=<token> 指定

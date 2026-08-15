@@ -79,10 +79,19 @@ async function init() {
     // 若網址指定活動金鑰，先記住
     if (urlKey) unlockedActivityKeys.set(urlAct, urlKey);
 
-    await loadActivities();
+    // 活動列表載入失敗（如單位連結缺 unitToken）不直接中止；
+    // 若網址有指定 act，仍嘗試載入該活動
+    let listError = null;
+    try {
+      await loadActivities();
+    } catch (err) {
+      listError = err;
+    }
 
     // 活動選擇
     if (urlAct && activities.some(a => a.id === urlAct)) {
+      currentActivityId = urlAct;
+    } else if (urlAct && listError) {
       currentActivityId = urlAct;
     } else {
       currentActivityId = activities[0]?.id || null;
@@ -113,7 +122,11 @@ async function init() {
     setupHscroll();
   } catch (err) {
     console.error('初始化失敗:', err);
-    showError('無法載入資料，請稍後再試');
+    const code = err && err.cause && err.cause.code;
+    const hint = code === 'NEED_UNIT_TOKEN' || code === 'BAD_TOKEN'
+      ? '此活動為單位專屬，請使用管理後台「複製連結」取得的完整連結開啟'
+      : '無法載入資料，請稍後再試';
+    showError(hint);
   }
 }
 
@@ -122,7 +135,7 @@ async function loadActivities() {
   const params = {};
   if (activeUnit) { params.unit = activeUnit; params.unitToken = activeUnitToken; }
   const res = await fetchJSON('listActivities', params);
-  if (!res.ok) throw new Error(res.error || '載入活動失敗');
+  if (!res.ok) throw new Error(res.error || '載入活動失敗', { cause: { code: res.code } });
   activities = res.activities || [];
   publicToken = res.publicToken || null;
   if (publicToken) sessionStorage.setItem('publicToken', publicToken);
@@ -145,7 +158,7 @@ async function loadActivityInfo(actId) {
       categories = [];
       return false;
     }
-    throw new Error(res.error || '載入活動資訊失敗');
+    throw new Error(res.error || '載入活動資訊失敗', { cause: { code: res.code } });
   }
   activityInfo = res.activity;
   categories = res.categories || [];

@@ -128,6 +128,7 @@ async function handleLogin() {
     adminPassword = pwd;
     adminRole = role;
     adminUnit = role === 'unit' ? res.unit : null;
+    adminUnits = role === 'unit' && res.unit ? [res.unit] : [];
     showHint(loginHint, res.firstTime ? '首次登入，密碼已設定' : '登入成功', false);
     loginSection.style.display = 'none';
     adminPanel.style.display = 'block';
@@ -280,6 +281,7 @@ function renderActivityList() {
         </span>
       </div>
       <div class="activity-item-actions">
+        <button class="btn btn-secondary btn-sm" data-view="${act.id}">檢視</button>
         <button class="btn btn-secondary btn-sm" data-copylink="${act.id}">複製連結</button>
         <button class="btn btn-secondary btn-sm" data-edit="${act.id}">編輯</button>
         <button class="btn btn-danger btn-sm" data-delete="${act.id}">刪除</button>
@@ -297,6 +299,16 @@ function renderActivityList() {
   activityListEl.querySelectorAll('[data-copylink]').forEach(btn =>
     btn.addEventListener('click', () => copyActivityLink(btn.dataset.copylink))
   );
+  activityListEl.querySelectorAll('[data-view]').forEach(btn =>
+    btn.addEventListener('click', () => viewActivity(btn.dataset.view))
+  );
+}
+
+// 在新分頁開啟活動檢視頁
+function viewActivity(actId) {
+  const act = activities.find(a => a.id === actId);
+  if (!act) return;
+  window.open(buildActivityLink(act), '_blank');
 }
 
 // 產生檢視頁活動連結（單位活動需帶 unit + unitToken 才能被檢視）
