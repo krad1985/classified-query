@@ -188,7 +188,9 @@ function handleGetActivityInfo(params) {
 /**
  * 依實際填寫內容估算各顯示欄位的建議欄寬（px）
  * - 字寬估算：CJK/全形字元記 2 單位、其餘記 1 單位，1 單位 ≈ 7.5px
- * - 取第 4 長的內容為基準，避免少數離峰超長資料把欄寬撐爆
+ * - 基準取「平均值」與「第 85 百分位」較大者：
+ *   多數（85%）內容可單行顯示，少數離峰超長資料不影響推算，
+ *   超出部分交由前端換行（上限 3 行）＋氣泡提示處理
  * - 同時考慮欄位標題長度（標題最多貢獻 20 單位）
  * - 夾在 120–640px（與前端 COL_MIN/COL_MAX 一致）
  */
@@ -217,8 +219,14 @@ function computeRecColWidths(headers, rawRows, fields) {
       if (s === '') return;
       lens.push(estimateTextUnits(s));
     });
-    lens.sort(function(a, b) { return b - a; });
-    const base = lens.length > 3 ? lens[3] : (lens[0] || 0);
+    let base = 0;
+    if (lens.length) {
+      const sum = lens.reduce(function(acc, v) { return acc + v; }, 0);
+      const avg = sum / lens.length;
+      const sorted = lens.slice().sort(function(a, b) { return a - b; });
+      const idx = Math.min(sorted.length - 1, Math.floor(sorted.length * 0.85));
+      base = Math.max(avg, sorted[idx]);
+    }
     const headerUnits = Math.min(estimateTextUnits(f), 20);
     const units = Math.max(base, headerUnits);
     rec[f] = Math.max(MIN_W, Math.min(MAX_W, Math.round(units * UNIT_PX + PADDING_PX)));
