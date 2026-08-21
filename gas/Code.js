@@ -174,7 +174,8 @@ function handleGetActivityInfo(params) {
       displayFields: activity.displayFields || [],
       defaultSortField: activity.defaultSortField || '',
       defaultSortDir: activity.defaultSortDir || 'asc',
-      unit: activity.unit || ''
+      unit: activity.unit || '',
+      recColWidths: computeRecColWidths(data.headers, data.rawRows, activity.displayFields || [])
     },
     categories: categories.map(c => ({
       name: c.name,
@@ -182,6 +183,47 @@ function handleGetActivityInfo(params) {
       locked: !!protectedSet[c.name]
     }))
   };
+}
+
+/**
+ * 依實際填寫內容估算各顯示欄位的建議欄寬（px）
+ * - 字寬估算：CJK/全形字元記 2 單位、其餘記 1 單位，1 單位 ≈ 7.5px
+ * - 取第 4 長的內容為基準，避免少數離峰超長資料把欄寬撐爆
+ * - 同時考慮欄位標題長度（標題最多貢獻 20 單位）
+ * - 夾在 120–640px（與前端 COL_MIN/COL_MAX 一致）
+ */
+function estimateTextUnits(text) {
+  let u = 0;
+  for (const ch of String(text)) {
+    u += ch.codePointAt(0) > 0x2E7F ? 2 : 1;
+  }
+  return u;
+}
+
+function computeRecColWidths(headers, rawRows, fields) {
+  const UNIT_PX = 7.5;
+  const PADDING_PX = 40;
+  const MIN_W = 120;
+  const MAX_W = 640;
+  const rec = {};
+  if (!fields || !fields.length) return rec;
+  fields.forEach(f => {
+    if (headers.indexOf(f) < 0) return;
+    const lens = [];
+    rawRows.forEach(row => {
+      const v = row[f];
+      if (v === null || v === undefined) return;
+      const s = String(v).trim();
+      if (s === '') return;
+      lens.push(estimateTextUnits(s));
+    });
+    lens.sort(function(a, b) { return b - a; });
+    const base = lens.length > 3 ? lens[3] : (lens[0] || 0);
+    const headerUnits = Math.min(estimateTextUnits(f), 20);
+    const units = Math.max(base, headerUnits);
+    rec[f] = Math.max(MIN_W, Math.min(MAX_W, Math.round(units * UNIT_PX + PADDING_PX)));
+  });
+  return rec;
 }
 
 /**

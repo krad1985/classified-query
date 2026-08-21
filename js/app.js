@@ -21,6 +21,9 @@ const unlockedActivityKeys = new Map();
 // 已解鎖的分類密碼（session）
 const unlockedCats = new Map(); // name -> password
 
+// 後端依實際內容計算的推薦欄寬（field -> px），使用者自訂寬度優先
+let recommendedColWidths = {};
+
 // DOM
 const tabsEl = document.getElementById('activityTabs');
 const categoryBarEl = document.getElementById('categoryBar');
@@ -162,6 +165,7 @@ async function loadActivityInfo(actId) {
     throw new Error(res.error || '載入活動資訊失敗', { cause: { code: res.code } });
   }
   activityInfo = res.activity;
+  recommendedColWidths = res.activity.recColWidths || {};
   categories = res.categories || [];
   return true;
 }
@@ -555,18 +559,24 @@ function saveColWidths(map) {
 }
 function clampColW(w) { return Math.max(COL_MIN, Math.min(COL_MAX, Math.round(w))); }
 
-// 建立 colgroup；若已有儲存寬度則套用並啟用 fixed 排版
+// 建立 colgroup；優先套用使用者自訂欄寬，其次後端依內容計算的推薦欄寬
 function buildColgroup(fields) {
   let cg = tableEl.querySelector('colgroup');
   if (!cg) { cg = document.createElement('colgroup'); tableEl.insertBefore(cg, tableEl.firstChild); }
   cg.innerHTML = '';
   activeCols = [];
   const saved = loadColWidths();
-  customColsOn = fields.some(f => saved[f]);
+  const rec = recommendedColWidths || {};
+  const widths = {};
+  fields.forEach(f => {
+    if (saved[f]) widths[f] = saved[f];
+    else if (rec[f]) widths[f] = clampColW(rec[f]);
+  });
+  customColsOn = fields.some(f => widths[f]);
   tableEl.classList.toggle('fixed-cols', customColsOn);
   fields.forEach(f => {
     const col = document.createElement('col');
-    if (saved[f]) col.style.width = saved[f] + 'px';
+    if (widths[f]) col.style.width = widths[f] + 'px';
     cg.appendChild(col);
     activeCols.push(col);
   });
