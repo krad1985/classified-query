@@ -120,6 +120,7 @@ async function init() {
     setupSearch();
     setupModalEvents();
     setupHscroll();
+    setupCellTips();
   } catch (err) {
     console.error('初始化失敗:', err);
     const code = err && err.cause && err.cause.code;
@@ -495,14 +496,16 @@ function renderDataTable(fields, filteredRows) {
     const tr = document.createElement('tr');
     row.forEach(cell => {
       const td = document.createElement('td');
-      const text = cell ?? '';
-      td.textContent = text;
-      if (String(text).length > 24) td.title = String(text);
+      const span = document.createElement('span');
+      span.className = 'cell-text';
+      span.textContent = String(cell ?? '');
+      td.appendChild(span);
       tr.appendChild(td);
     });
     tableBodyEl.appendChild(tr);
   });
 
+  markClampedCells(tableBodyEl, 'td');
   syncHscroll();
 }
 
@@ -669,13 +672,98 @@ function renderCardList(fields, rows) {
       const dt = document.createElement('dt');
       dt.textContent = f;
       const dd = document.createElement('dd');
-      dd.textContent = row[i + 1] ?? '';
+      const span = document.createElement('span');
+      span.className = 'cell-text card-dd-text';
+      span.textContent = row[i + 1] ?? '';
+      dd.appendChild(span);
       item.appendChild(dt);
       item.appendChild(dd);
       card.appendChild(item);
     });
     cardListEl.appendChild(card);
   });
+
+  markClampedCells(cardListEl, 'dd');
+}
+
+// ── 資料過長處理：行數上限截斷 + 氣泡提示完整內容 ──
+// 渲染後偵測內容被截斷的儲存格，標記 is-clamped（供 hover／點擊提示）
+function markClampedCells(container, selector) {
+  requestAnimationFrame(() => {
+    container.querySelectorAll(selector).forEach(el => {
+      const inner = el.firstElementChild;
+      if (inner && inner.scrollHeight > inner.clientHeight + 1) {
+        el.classList.add('is-clamped');
+      }
+    });
+  });
+}
+
+let cellTipEl = null;
+let cellTipCur = null;   // 目前提示對應的元素
+let cellTipPin = false;  // 點擊釘選（滑鼠移開不關閉）
+
+function ensureCellTip() {
+  if (!cellTipEl) {
+    cellTipEl = document.createElement('div');
+    cellTipEl.className = 'cell-tip';
+    cellTipEl.setAttribute('role', 'tooltip');
+    document.body.appendChild(cellTipEl);
+  }
+  return cellTipEl;
+}
+
+function showCellTip(el, pin) {
+  const tip = ensureCellTip();
+  cellTipCur = el;
+  cellTipPin = !!pin;
+  tip.textContent = el.textContent;
+  tip.classList.add('show');
+  tip.classList.toggle('pin', cellTipPin);
+  const r = el.getBoundingClientRect();
+  const maxW = Math.min(360, window.innerWidth - 24);
+  tip.style.maxWidth = maxW + 'px';
+  const tw = tip.offsetWidth;
+  const th = tip.offsetHeight;
+  let x = r.left + r.width / 2 - tw / 2;
+  x = Math.max(8, Math.min(x, window.innerWidth - tw - 8));
+  let y = r.bottom + 8;
+  if (y + th > window.innerHeight - 8) y = r.top - th - 8;
+  if (y < 8) y = 8;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+
+function hideCellTip(force) {
+  if (!cellTipEl) return;
+  if (cellTipPin && !force) return;
+  cellTipEl.classList.remove('show', 'pin');
+  cellTipCur = null;
+  cellTipPin = false;
+}
+
+function setupCellTips() {
+  [tableBodyEl, cardListEl].forEach(root => {
+    root.addEventListener('mouseover', e => {
+      if (cellTipPin) return;
+      const t = e.target.closest('.is-clamped');
+      if (t) showCellTip(t, false);
+      else hideCellTip();
+    });
+    root.addEventListener('mouseleave', () => hideCellTip());
+  });
+  // 觸控／點擊：釘選顯示；再點同格或點其他處、Esc 關閉
+  document.addEventListener('click', e => {
+    const t = e.target.closest('.is-clamped');
+    if (t && cellTipPin && cellTipCur === t) hideCellTip(true);
+    else if (t) showCellTip(t, true);
+    else hideCellTip(true);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') hideCellTip(true);
+  });
+  tableWrapperEl.addEventListener('scroll', () => hideCellTip(true), { passive: true });
+  window.addEventListener('resize', () => hideCellTip(true));
 }
 
 // 訪客點標題排序：依欄位切換升/降，再點同欄反轉方向

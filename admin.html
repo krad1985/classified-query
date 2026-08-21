@@ -1,186 +1,186 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>管理後台 - 名冊查詢</title>
-  <meta name="description" content="設定活動分類欄位、顯示欄位、分類密碼鎖">
+  <title>�޲z��x - �W�U�d��</title>
+  <meta name="description" content="�]�w���ʤ������B������B�����K�X��">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=21">
+  <link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <span class="seal" aria-hidden="true">閣</span>
+      <span class="seal" aria-hidden="true">��</span>
       <div class="header-title">
-        <h1>管理後台</h1>
-        <p class="subtitle">設定活動分類欄位、顯示欄位、分類密碼鎖</p>
+        <h1>�޲z��x</h1>
+        <p class="subtitle">�]�w���ʤ������B������B�����K�X��</p>
       </div>
-      <a href="index.html" class="admin-link header-admin-link">前往查詢頁</a>
+      <a href="index.html" class="admin-link header-admin-link">�e���d�߭�</a>
     </div>
   </header>
 
   <main class="container">
-    <!-- 登入區 -->
+    <!-- �n�J�� -->
     <section class="card" id="loginSection">
-      <h2>管理員登入</h2>
+      <h2>�޲z���n�J</h2>
       <div class="form-group">
-        <label for="loginRole">登入身分</label>
+        <label for="loginRole">�n�J����</label>
         <select id="loginRole">
-          <option value="admin">總管理員</option>
-          <option value="unit">單位管理員</option>
+          <option value="admin">�`�޲z��</option>
+          <option value="unit">���޲z��</option>
         </select>
       </div>
       <div class="form-group" id="loginUnitGroup" style="display:none;">
-        <label for="loginUnit">所屬單位</label>
+        <label for="loginUnit">���ݳ��</label>
         <select id="loginUnit">
-          <option value="">（載入中…）</option>
+          <option value="">�]���J���K�^</option>
         </select>
-        <p class="hint">選擇您所屬的單位，再輸入單位管理密碼。</p>
+        <p class="hint">��ܱz���ݪ����A�A��J���޲z�K�X�C</p>
       </div>
       <div class="form-group">
-        <label for="adminPwd">密碼</label>
-        <input type="password" id="adminPwd" placeholder="總管理員或單位管理密碼" autocomplete="current-password">
+        <label for="adminPwd">�K�X</label>
+        <input type="password" id="adminPwd" placeholder="�`�޲z���γ��޲z�K�X" autocomplete="current-password">
       </div>
-      <button class="btn btn-primary" id="btnLogin">登入</button>
+      <button class="btn btn-primary" id="btnLogin">�n�J</button>
       <p class="hint" id="loginHint"></p>
     </section>
 
-    <!-- 管理介面（登入後顯示）-->
+    <!-- �޲z�����]�n�J����ܡ^-->
     <section id="adminPanel" style="display:none;">
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-header">
-          <h2 id="panelTitle">活動管理</h2>
-          <button class="btn btn-secondary" id="btnAddActivity">＋ 新增活動</button>
+          <h2 id="panelTitle">���ʺ޲z</h2>
+          <button class="btn btn-secondary" id="btnAddActivity">�� �s�W����</button>
         </div>
         <p class="hint" id="loginRoleHint"></p>
         <ul class="activity-list" id="activityList"></ul>
       </div>
 
-      <!-- 單位管理（僅總管理員）-->
+      <!-- ���޲z�]���`�޲z���^-->
       <div class="card" id="unitAdminCard" style="display:none; margin-top:1.5rem;">
         <div class="card-header">
-          <h2>單位管理</h2>
+          <h2>���޲z</h2>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="newUnitName">單位名稱</label>
-            <input type="text" id="newUnitName" placeholder="例如：總部">
+            <label for="newUnitName">���W��</label>
+            <input type="text" id="newUnitName" placeholder="�Ҧp�G�`��">
           </div>
           <div class="form-group">
-            <label for="newUnitPwd">單位管理密碼（至少 6 碼）</label>
-            <input type="password" id="newUnitPwd" minlength="6" placeholder="單位管理員登入用">
+            <label for="newUnitPwd">���޲z�K�X�]�ܤ� 6 �X�^</label>
+            <input type="password" id="newUnitPwd" minlength="6" placeholder="���޲z���n�J��">
           </div>
           <div class="form-group">
-            <button class="btn btn-primary" id="btnCreateUnit" style="margin-top:1.7rem;">建立單位</button>
+            <button class="btn btn-primary" id="btnCreateUnit" style="margin-top:1.7rem;">�إ߳��</button>
           </div>
         </div>
         <ul class="activity-list" id="unitList"></ul>
         <p class="hint" id="unitHint"></p>
       </div>
 
-      <!-- 新增/編輯活動 Modal -->
+      <!-- �s�W/�s�謡�� Modal -->
       <dialog id="activityModal" class="modal">
         <form method="dialog" class="modal-content">
           <header class="modal-header">
-            <h3 id="modalTitle">新增活動</h3>
-            <button type="button" class="modal-close" aria-label="關閉">&times;</button>
+            <h3 id="modalTitle">�s�W����</h3>
+            <button type="button" class="modal-close" aria-label="����">&times;</button>
           </header>
           <div class="modal-body">
             <input type="hidden" id="editActivityId">
             <div class="form-group">
-              <label for="actName">活動名稱 <span class="required">*</span></label>
-              <input type="text" id="actName" placeholder="例如：2026 秋季報名" required>
+              <label for="actName">���ʦW�� <span class="required">*</span></label>
+              <input type="text" id="actName" placeholder="�Ҧp�G2026 ��u���W" required>
             </div>
             <div class="form-group" id="actUnitGroup" style="display:none;">
-              <label for="actUnit">所屬單位</label>
+              <label for="actUnit">���ݳ��</label>
               <select id="actUnit">
-                <option value="">（公開，所有訪客可見）</option>
+                <option value="">�]���}�A�Ҧ��X�ȥi���^</option>
               </select>
-              <p class="hint">選擇後僅該單位（含單位 Token 的網址）可看到此活動。</p>
+              <p class="hint">��ܫ�ȸӳ��]�t��� Token �����}�^�i�ݨ즹���ʡC</p>
             </div>
             <div class="form-group">
-              <label for="actAccessKey">存取金鑰（選填）</label>
-              <input type="text" id="actAccessKey" placeholder="留空＝公開（僅顯示隔離）；填寫＝需金鑰才能開啟">
-              <p class="hint">留空：訪客開啟名冊即可查看，但受保護的分類仍需輸入分類密碼。填寫：訪客開啟此活動需先輸入存取金鑰。</p>
+              <label for="actAccessKey">�s�����_�]���^</label>
+              <input type="text" id="actAccessKey" placeholder="�d�šפ��}�]����ܹj���^�F��g�׻ݪ��_�~��}��">
+              <p class="hint">�d�šG�X�ȶ}�ҦW�U�Y�i�d�ݡA�����O�@���������ݿ�J�����K�X�C��g�G�X�ȶ}�Ҧ����ʻݥ���J�s�����_�C</p>
             </div>
             <div class="form-group">
-              <label for="actSheetUrl">Google Sheets 網址 <span class="required">*</span></label>
+              <label for="actSheetUrl">Google Sheets ���} <span class="required">*</span></label>
               <input type="url" id="actSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit" required>
-              <button type="button" class="btn btn-secondary" id="btnTestConnection">測試連線並取得欄位</button>
+              <button type="button" class="btn btn-secondary" id="btnTestConnection">���ճs�u�è��o���</button>
               <p class="hint" id="connectionHint"></p>
             </div>
             <div class="form-group">
-              <label for="actCategoryField">分類欄位 <span class="required">*</span></label>
+              <label for="actCategoryField">������� <span class="required">*</span></label>
               <select id="actCategoryField" required>
-                <option value="">（請先測試連線取得欄位）</option>
+                <option value="">�]�Х����ճs�u���o���^</option>
               </select>
-              <p class="hint">選擇要用來「分類／區域／教室」的欄位（例如母班區域、教室、縣市等）</p>
+              <p class="hint">��ܭn�Ψӡu�������ϰ���Ыǡv�����]�Ҧp���Z�ϰ�B�ЫǡB�������^</p>
             </div>
             <fieldset class="form-group">
-              <legend>顯示欄位（勾選並排序）<span class="required">*</span>
+              <legend>������]�Ŀ�ñƧǡ^<span class="required">*</span>
                 <span class="legend-actions">
-                  <button type="button" class="btn btn-secondary btn-sm" id="btnSelectAllFields">全選</button>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btnClearFields">清除</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSelectAllFields">����</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnClearFields">�M��</button>
                 </span>
               </legend>
-              <p class="hint">勾選要在名冊中顯示的欄位，用 ▲ ▼ 調整欄位順序。</p>
+              <p class="hint">�Ŀ�n�b�W�U����ܪ����A�� �� �� �վ���춶�ǡC</p>
               <ul id="fieldSortList" class="field-sort-list"></ul>
               <p class="hint" id="fieldSortHint"></p>
             </fieldset>
             <fieldset class="form-group">
-              <legend>預設排序（選填）</legend>
-              <p class="hint">訪客開啟名冊時預設依此欄位排序，仍可點表格標題自行切換。</p>
+              <legend>�w�]�Ƨǡ]���^</legend>
+              <p class="hint">�X�ȶ}�ҦW�U�ɹw�]�̦����ƧǡA���i�I������D�ۦ�����C</p>
               <div class="form-row">
                 <div class="form-group">
-                  <label for="actDefaultSortField">排序欄位</label>
+                  <label for="actDefaultSortField">�Ƨ����</label>
                   <select id="actDefaultSortField">
-                    <option value="">（不排序，依原始順序）</option>
+                    <option value="">�]���ƧǡA�̭�l���ǡ^</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="actDefaultSortDir">方向</label>
+                  <label for="actDefaultSortDir">��V</label>
                   <select id="actDefaultSortDir">
-                    <option value="asc">升序（小 → 大）</option>
-                    <option value="desc">降序（大 → 小）</option>
+                    <option value="asc">�ɧǡ]�p �� �j�^</option>
+                    <option value="desc">���ǡ]�j �� �p�^</option>
                   </select>
                 </div>
               </div>
             </fieldset>
             <fieldset class="form-group">
-              <legend>分類密碼鎖（選填）</legend>
-              <p class="hint">勾選要鎖住的分類，按「生成密碼」產生密碼。訪客需輸入該分類密碼才能查看。</p>
+              <legend>�����K�X��]���^</legend>
+              <p class="hint">�Ŀ�n����������A���u�ͦ��K�X�v���ͱK�X�C�X�Ȼݿ�J�Ӥ����K�X�~��d�ݡC</p>
               <div id="categoryPwdList" class="category-pwd-list"></div>
               <p class="hint" id="catPwdHint"></p>
             </fieldset>
             <div class="form-group">
-              <label for="actSheetName">工作表名稱（選填，留空取第一個）</label>
-              <input type="text" id="actSheetName" placeholder="表單回應 1">
+              <label for="actSheetName">�u�@���W�١]���A�d�Ũ��Ĥ@�ӡ^</label>
+              <input type="text" id="actSheetName" placeholder="����^�� 1">
             </div>
           </div>
           <footer class="modal-footer">
-            <button type="button" class="btn btn-secondary" value="cancel">取消</button>
-            <button type="submit" class="btn btn-primary" id="btnSaveActivity">儲存</button>
+            <button type="button" class="btn btn-secondary" value="cancel">����</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveActivity">�x�s</button>
           </footer>
         </form>
       </dialog>
 
-      <!-- 密碼變更 -->
+      <!-- �K�X�ܧ� -->
       <div class="card" id="changePwdCard" style="margin-top:1.5rem;">
-        <h2 id="changePwdTitle">變更管理密碼</h2>
+        <h2 id="changePwdTitle">�ܧ�޲z�K�X</h2>
         <div class="form-row">
           <div class="form-group">
-            <label for="oldPwd">舊密碼</label>
+            <label for="oldPwd">�±K�X</label>
             <input type="password" id="oldPwd" autocomplete="current-password">
           </div>
           <div class="form-group">
-            <label for="newPwd">新密碼（至少 6 碼）</label>
+            <label for="newPwd">�s�K�X�]�ܤ� 6 �X�^</label>
             <input type="password" id="newPwd" minlength="6" autocomplete="new-password">
           </div>
         </div>
-        <button class="btn btn-secondary" id="btnChangePwd">更新密碼</button>
+        <button class="btn btn-secondary" id="btnChangePwd">��s�K�X</button>
         <p class="hint" id="pwdHint"></p>
       </div>
     </section>
@@ -189,7 +189,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=21"></script>
-  <script src="js/admin.js?v=21"></script>
+  <script src="js/config.js?v=22"></script>
+  <script src="js/admin.js?v=22"></script>
 </body>
 </html>
