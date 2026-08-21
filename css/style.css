@@ -461,6 +461,24 @@ tbody tr:hover td { background: var(--cinnabar-wash); }
 .cell-tip.show { display: block; opacity: 1; }
 .cell-tip.pin { pointer-events: auto; }
 
+/* 分類組合（後台） */
+.cat-group-add { display: flex; gap: .5rem; margin: .5rem 0; }
+.cat-group-add input {
+  flex: 1; padding: .45rem .7rem;
+  border: var(--hairline); border-radius: var(--radius);
+  font-family: var(--font-sans); font-size: .88rem;
+}
+.cat-group-members {
+  display: flex; flex-wrap: wrap; gap: .35rem .8rem;
+  padding: .5rem .25rem;
+}
+.cat-group-candidate {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .85rem; color: var(--ink);
+  cursor: pointer; white-space: nowrap;
+}
+.group-members { display: inline-flex; flex-wrap: wrap; gap: .25rem; margin-left: .3rem; }
+
 /* --- 活動清單（後台） --- */
 .activity-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .6rem; }
 .tag {

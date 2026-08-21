@@ -397,6 +397,7 @@ function renderCategoryTabs() {
       btn.className = 'category-tab' + (c.name === currentCategory ? ' active' : '');
       btn.dataset.cat = c.name;
       btn.textContent = `${c.name} (${c.count})`;
+      if (c.isGroup) btn.title = `由 ${c.members.length} 個分類合併顯示`;
       if (c.locked) {
         btn.classList.add('locked');
         const lock = document.createElement('span');

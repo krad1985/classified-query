@@ -14,6 +14,7 @@ let availableFields = [];   // 從試算表讀取的欄位
 let categoryValues = [];    // 分類欄位的所有唯一值
 let editingActivityId = null;
 let pendingProtected = {};  // 目前編輯中活動的分類密碼 { 分類: 密碼 }
+let pendingCategoryGroups = []; // 目前編輯中活動的分類組合 [{ name, members[] }]
 let selectedFields = [];    // 顯示欄位排序清單（勾選 + 順序）
 let defaultSortField = '';  // 預設排序欄位（需為勾選的顯示欄位之一）
 let defaultSortDir = 'asc'; // 預設排序方向：asc / desc
@@ -51,6 +52,11 @@ const actDefaultSortField = document.getElementById('actDefaultSortField');
 const actDefaultSortDir = document.getElementById('actDefaultSortDir');
 const categoryPwdListEl = document.getElementById('categoryPwdList');
 const catPwdHintEl = document.getElementById('catPwdHint');
+const catGroupListEl = document.getElementById('catGroupList');
+const catGroupNameInput = document.getElementById('catGroupName');
+const catGroupMembersEl = document.getElementById('catGroupMembers');
+const btnAddCatGroup = document.getElementById('btnAddCatGroup');
+const catGroupHintEl = document.getElementById('catGroupHint');
 const btnTestConnection = document.getElementById('btnTestConnection');
 const connectionHint = document.getElementById('connectionHint');
 const btnSaveActivity = document.getElementById('btnSaveActivity');
@@ -81,6 +87,7 @@ function init() {
   btnTestConnection.addEventListener('click', handleTestConnection);
   actCategoryField.addEventListener('change', handleCategoryFieldChange);
   btnSaveActivity.addEventListener('click', handleSaveActivity);
+  btnAddCatGroup.addEventListener('click', addCategoryGroup);
 
   btnChangePwd.addEventListener('click', handleChangePassword);
   btnCreateUnit.addEventListener('click', handleCreateUnit);
@@ -375,6 +382,7 @@ function openModal(actId = null) {
       actSheetUrlInput.value = act.sheetUrl || '';
       actSheetNameInput.value = act.sheetName || '';
       pendingProtected = { ...(act.protectedCategories || {}) };
+      pendingCategoryGroups = (act.categoryGroups || []).map(g => ({ name: g.name, members: [...(g.members || [])] }));
       defaultSortField = act.defaultSortField || '';
       defaultSortDir = act.defaultSortDir || 'asc';
       // 顯示欄位：依活動既有的 displayFields 順序建立選取與排序
@@ -417,6 +425,7 @@ function resetModalForm() {
   availableFields = [];
   categoryValues = [];
   pendingProtected = {};
+  pendingCategoryGroups = [];
   selectedFields = [];
   defaultSortField = '';
   defaultSortDir = 'asc';
@@ -554,13 +563,14 @@ function updateFieldSortHint() {
 function handleCategoryFieldChange() {
   updateCategoryValues();
   renderCategoryPwdList();
+  renderCategoryGroups();
 }
 
 // 依試算表資料取得分類欄位的唯一值
 async function updateCategoryValues() {
   const field = actCategoryField.value;
   categoryValues = [];
-  if (!field) { renderCategoryPwdList(); return; }
+  if (!field) { renderCategoryPwdList(); renderCategoryGroups(); return; }
   const url = actSheetUrlInput.value.trim();
   const sheetId = url ? extractSheetId(url) : null;
   if (!sheetId) return;
@@ -572,6 +582,7 @@ async function updateCategoryValues() {
     console.error('取得分類值失敗:', err);
   }
   renderCategoryPwdList();
+  renderCategoryGroups();
 }
 
 // 渲染分類密碼鎖清單
@@ -629,6 +640,74 @@ function copyCategoryLink(cat) {
   }).catch(() => {
     showHint(catPwdHintEl, '複製失敗，請手動複製：' + url, true);
   });
+}
+
+// ── 分類組合 ──
+// 渲染：已存組合清單 + 可選成員（排除已用於其他組合、已鎖定的分類）
+function renderCategoryGroups() {
+  if (!categoryValues.length) {
+    catGroupListEl.innerHTML = '';
+    catGroupMembersEl.innerHTML = '<p class="hint">請先選擇分類欄位並取得分類值。</p>';
+    return;
+  }
+
+  // 已存組合
+  if (pendingCategoryGroups.length === 0) {
+    catGroupListEl.innerHTML = '<p class="hint">尚未建立任何組合。</p>';
+  } else {
+    catGroupListEl.innerHTML = pendingCategoryGroups.map(g => `
+      <div class="cat-pwd-row">
+        <span class="cat-pwd-name">${escapeHtml(g.name)}</span>
+        <div class="cat-pwd-controls">
+          <span class="group-members">${g.members.map(m => `<span class="tag">${escapeHtml(m)}</span>`).join('')}</span>
+          <button type="button" class="btn btn-danger btn-sm" data-del-group="${escapeHtml(g.name)}">刪除</button>
+        </div>
+      </div>
+    `).join('');
+    catGroupListEl.querySelectorAll('[data-del-group]').forEach(btn =>
+      btn.addEventListener('click', () => removeCategoryGroup(btn.dataset.delGroup))
+    );
+  }
+
+  // 候選成員：未被其他組合使用、未鎖定
+  const used = new Set(pendingCategoryGroups.flatMap(g => g.members));
+  const locked = new Set(Object.keys(pendingProtected));
+  const candidates = categoryValues.filter(v => !used.has(v) && !locked.has(v));
+
+  if (candidates.length === 0) {
+    catGroupMembersEl.innerHTML = '<p class="hint">沒有可加入的分類（全部分類已被使用或鎖定）。</p>';
+  } else {
+    catGroupMembersEl.innerHTML = candidates.map(v => `
+      <label class="cat-group-candidate">
+        <input type="checkbox" data-member="${escapeHtml(v)}">
+        ${escapeHtml(v)}
+      </label>
+    `).join('');
+  }
+}
+
+function addCategoryGroup() {
+  const name = catGroupNameInput.value.trim();
+  if (!name) { showHint(catGroupHintEl, '請輸入組合名稱', true); return; }
+  if (pendingCategoryGroups.some(g => g.name === name)) {
+    showHint(catGroupHintEl, '組合名稱重複，請換一個', true);
+    return;
+  }
+  if (categoryValues.includes(name)) {
+    showHint(catGroupHintEl, '組合名稱不可與既有分類相同', true);
+    return;
+  }
+  const members = [...catGroupMembersEl.querySelectorAll('[data-member]:checked')].map(cb => cb.dataset.member);
+  if (members.length === 0) { showHint(catGroupHintEl, '請至少勾選一個要合併的分類', true); return; }
+  pendingCategoryGroups.push({ name, members });
+  catGroupNameInput.value = '';
+  showHint(catGroupHintEl, `已建立組合「${name}」（${members.length} 個分類），記得按「儲存」`, false);
+  renderCategoryGroups();
+}
+
+function removeCategoryGroup(name) {
+  pendingCategoryGroups = pendingCategoryGroups.filter(g => g.name !== name);
+  renderCategoryGroups();
 }
 
 // 依登入角色回傳後端權限參數
@@ -699,6 +778,7 @@ async function handleSaveActivity() {
       categoryField,
       displayFields,
       protectedCategories: pendingProtected,
+      categoryGroups: pendingCategoryGroups,
       defaultSortField: actDefaultSortField.value || '',
       defaultSortDir: actDefaultSortDir.value === 'desc' ? 'desc' : 'asc',
       accessKey: actAccessKeyInput.value.trim() || ''

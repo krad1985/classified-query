@@ -162,8 +162,9 @@ function handleGetActivityInfo(params) {
   const data = readSpreadsheetData(activity);
   if (!data.ok) return data;
 
-  const categories = collectCategories(data.rawRows, activity.categoryField);
+  const rawCategories = collectCategories(data.rawRows, activity.categoryField);
   const protectedSet = activity.protectedCategories || {};
+  const categories = buildDisplayCategories(rawCategories, protectedSet, activity.categoryGroups || []);
 
   return {
     ok: true,
@@ -180,9 +181,54 @@ function handleGetActivityInfo(params) {
     categories: categories.map(c => ({
       name: c.name,
       count: c.count,
-      locked: !!protectedSet[c.name]
+      locked: !!c.locked,
+      isGroup: !!c.isGroup,
+      members: c.members || []
     }))
   };
+}
+
+/**
+ * 組合顯示用分類清單：
+ * - 有 categoryGroups 時，成員分類隱藏，改以組合呈現（count 為成員合計）
+ * - 組合一律視為未鎖定（成員中的鎖定分類會在 getList 時排除，不洩漏資料）
+ * - 組合名稱不得與任何原始分類相同：同名時該組合略過（避免查詢歧義）
+ */
+function buildDisplayCategories(rawCategories, protectedSet, groups) {
+  const countByName = {};
+  rawCategories.forEach(c => { countByName[c.name] = c.count; });
+  const rawNames = new Set(rawCategories.map(c => c.name));
+
+  const usedMembers = new Set();
+  const validGroups = [];
+  (Array.isArray(groups) ? groups : []).forEach(g => {
+    if (!g || !g.name) return;
+    const name = String(g.name).trim();
+    if (!name || rawNames.has(name)) return;
+    const members = (Array.isArray(g.members) ? g.members : [])
+      .map(m => String(m).trim())
+      .filter((m, i, arr) => m && arr.indexOf(m) === i && rawNames.has(m));
+    if (!members.length) return;
+    validGroups.push({ name, members });
+    members.forEach(m => usedMembers.add(m));
+  });
+
+  const out = validGroups.map(g => ({
+    name: g.name,
+    count: g.members.reduce((sum, m) => sum + (countByName[m] || 0), 0),
+    locked: false,
+    isGroup: true,
+    members: g.members
+  }));
+
+  rawCategories.forEach(c => {
+    if (!usedMembers.has(c.name) && !validGroups.some(g => g.name === c.name)) {
+      out.push({ name: c.name, count: c.count, locked: !!protectedSet[c.name], isGroup: false });
+    }
+  });
+
+  out.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+  return out;
 }
 
 /**
@@ -254,8 +300,19 @@ function handleGetList(params) {
   const categoryField = activity.categoryField;
   const protectedSet = activity.protectedCategories || {};
 
+  // 分類組合：cat 命中組合名稱時，展開為成員分類集合
+  // 成員中的鎖定分類一律排除，避免藉組合繞過密碼
+  let memberSet = null;
+  const group = (activity.categoryGroups || []).find(g => g && g.name === cat);
+  if (group) {
+    memberSet = {};
+    (group.members || []).forEach(m => {
+      if (!protectedSet[m]) memberSet[m] = true;
+    });
+  }
+
   // 若指定分類且該分類被鎖定，需驗證密碼
-  if (cat && protectedSet[cat] && protectedSet[cat] !== pwd) {
+  if (cat && !memberSet && protectedSet[cat] && protectedSet[cat] !== pwd) {
     return { ok: false, code: 'NEED_PWD', error: '此分類已鎖定，需輸入正確密碼' };
   }
 
@@ -269,12 +326,14 @@ function handleGetList(params) {
   if (!data.ok) return data;
 
   // 過濾分類
-  let rows = data.rawRows;
-  if (cat) {
-    rows = rows.filter(r => String(r[categoryField] ?? '') === cat);
+  let rows;
+  if (memberSet) {
+    rows = data.rawRows.filter(r => memberSet[String(r[categoryField] ?? '').trim()]);
+  } else if (cat) {
+    rows = data.rawRows.filter(r => String(r[categoryField] ?? '') === cat);
   } else {
     // 未指定分類時：僅回傳「未鎖定分類」的列，避免洩漏鎖定資料
-    rows = rows.filter(r => {
+    rows = data.rawRows.filter(r => {
       const c = String(r[categoryField] ?? '');
       return !(protectedSet[c]);
     });
@@ -565,6 +624,27 @@ function handleSetUnitPassword(params) {
 }
 
 /**
+ * 清理分類組合設定：僅保留 {name, members[]} 結構，去空、去重、去無成員的組合
+ */
+function sanitizeCategoryGroups(data) {
+  const groups = Array.isArray(data.categoryGroups) ? data.categoryGroups : [];
+  const out = [];
+  const seen = {};
+  groups.forEach(g => {
+    if (!g || typeof g.name !== 'string') return;
+    const name = g.name.trim();
+    if (!name || seen[name]) return;
+    const members = (Array.isArray(g.members) ? g.members : [])
+      .map(m => String(m).trim())
+      .filter((m, i, arr) => m && arr.indexOf(m) === i);
+    if (!members.length) return;
+    out.push({ name, members });
+    seen[name] = true;
+  });
+  data.categoryGroups = out;
+}
+
+/**
  * 儲存/更新活動設定
  * - 總管理員：可設任意 unit / 金鑰
  * - 單位管理員：僅能存取自己單位的活動；unit 鎖定為自己的單位
@@ -581,6 +661,7 @@ function handleSaveActivity(params) {
     activityData.unit = unit.id;
     // 單位管理員不能設定存取金鑰以外的欄位限制？仍可設 accessKey（單位的公開金鑰由總管理員控管）
     activityData.protectedCategories = activityData.protectedCategories || {};
+    sanitizeCategoryGroups(activityData);
     activityData.cacheVersion = (activityData.cacheVersion || 0) + 1;
 
     if (!activityData.id) {
@@ -603,6 +684,7 @@ function handleSaveActivity(params) {
 
   const activityData = JSON.parse(params.data || '{}');
   activityData.protectedCategories = activityData.protectedCategories || {};
+  sanitizeCategoryGroups(activityData);
   activityData.cacheVersion = (activityData.cacheVersion || 0) + 1;
 
   if (!activityData.id) {

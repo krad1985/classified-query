@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=22">
+  <link rel="stylesheet" href="css/style.css?v=23">
 </head>
 <body>
   <header class="site-header">
@@ -155,6 +155,17 @@
               <div id="categoryPwdList" class="category-pwd-list"></div>
               <p class="hint" id="catPwdHint"></p>
             </fieldset>
+            <fieldset class="form-group">
+              <legend>分類組合（選填）</legend>
+              <p class="hint">將人數較少的多個分類合併成一個分類顯示。成員分類會隱藏，訪客點組合即可看到合併後的名單。</p>
+              <div id="catGroupList" class="category-pwd-list"></div>
+              <div class="cat-group-add">
+                <input type="text" id="catGroupName" placeholder="組合名稱，例：待確認" maxlength="30">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnAddCatGroup">新增組合</button>
+              </div>
+              <div id="catGroupMembers" class="cat-group-members"></div>
+              <p class="hint" id="catGroupHint"></p>
+            </fieldset>
             <div class="form-group">
               <label for="actSheetName">工作表名稱（選填，留空取第一個）</label>
               <input type="text" id="actSheetName" placeholder="表單回應 1">
@@ -189,7 +200,7 @@
     </footer>
   </main>
 
-  <script src="js/config.js?v=24"></script>
-  <script src="js/admin.js?v=22"></script>
+  <script src="js/config.js?v=25"></script>
+  <script src="js/admin.js?v=23"></script>
 </body>
 </html>
