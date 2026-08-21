@@ -344,6 +344,8 @@ tbody td .cell-text {
   overflow-wrap: anywhere;
   line-height: 1.5;
 }
+/* 內容 15 字內：維持單行不換行 */
+tbody td .cell-nowrap { white-space: nowrap; text-overflow: ellipsis; }
 tbody td.is-clamped, .name-card-item dd.is-clamped { cursor: help; }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:nth-child(even) td { background: rgba(239,232,216,.35); }

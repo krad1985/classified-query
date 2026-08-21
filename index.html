@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>¦W¥U¬d¸ß - ³ø¦W¸ê®Æ¬d¸ß</title>
-  <meta name="description" content="¨Ì°Ï°ì / ±Ð«ÇÄæ¦ì¿z¿ï¡A¨Ì¤ÀÃþÀËµø³ø¦W¸ê®Æ">
+  <title>åå†ŠæŸ¥è©¢ - å ±åè³‡æ–™æŸ¥è©¢</title>
+  <meta name="description" content="ä¾å€åŸŸ / æ•™å®¤æ¬„ä½ç¯©é¸ï¼Œä¾åˆ†é¡žæª¢è¦–å ±åè³‡æ–™">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
@@ -13,103 +13,103 @@
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <span class="seal" aria-hidden="true">¥U</span>
+      <span class="seal" aria-hidden="true">å†Š</span>
       <div class="header-title">
-        <h1>³ø¦W¦W¥U</h1>
-        <p class="subtitle">¨Ì°Ï°ì¡þ±Ð«Ç¿z¿ï¡AÂ½¾\¦U¤ÀÃþ¦W¥U</p>
+        <h1>å ±ååå†Š</h1>
+        <p class="subtitle">ä¾å€åŸŸï¼æ•™å®¤ç¯©é¸ï¼Œç¿»é–±å„åˆ†é¡žåå†Š</p>
       </div>
-      <a href="admin.html" class="admin-link header-admin-link">ºÞ²z«á¥x</a>
+      <a href="admin.html" class="admin-link header-admin-link">ç®¡ç†å¾Œå°</a>
     </div>
   </header>
 
   <main class="container">
-    <!-- ¬¡°Ê¤À­¶ -->
-    <nav class="activity-tabs" id="activityTabs" aria-label="¬¡°Ê¤À­¶" role="tablist">
-      <!-- °ÊºA²£¥Í -->
+    <!-- æ´»å‹•åˆ†é  -->
+    <nav class="activity-tabs" id="activityTabs" aria-label="æ´»å‹•åˆ†é " role="tablist">
+      <!-- å‹•æ…‹ç”¢ç”Ÿ -->
     </nav>
 
-    <!-- ¤ÀÃþ¦C -->
+    <!-- åˆ†é¡žåˆ— -->
     <div class="category-bar" id="categoryBar" style="display:none;">
       <span class="category-label" id="categoryLabel"></span>
       <div class="category-tabs" id="categoryTabs"></div>
       <div class="category-filter">
-        <label for="categorySearch" class="visually-hidden">·j´M¤ÀÃþ</label>
-        <input type="search" id="categorySearch" placeholder="§ä¤ÀÃþ¡K" autocomplete="off">
+        <label for="categorySearch" class="visually-hidden">æœå°‹åˆ†é¡ž</label>
+        <input type="search" id="categorySearch" placeholder="æ‰¾åˆ†é¡žâ€¦" autocomplete="off">
       </div>
-      <button class="btn btn-secondary btn-sm" id="btnCopyLink" style="display:none;">½Æ»s³sµ²</button>
+      <button class="btn btn-secondary btn-sm" id="btnCopyLink" style="display:none;">è¤‡è£½é€£çµ</button>
     </div>
 
-    <!-- ¬¡°Êª÷Æ_ Modal¡]»Ý¦s¨úª÷Æ_¤~¯à¶}±Ò¬¡°Ê¡^ -->
+    <!-- æ´»å‹•é‡‘é‘° Modalï¼ˆéœ€å­˜å–é‡‘é‘°æ‰èƒ½é–‹å•Ÿæ´»å‹•ï¼‰ -->
     <dialog id="keyModal" class="modal">
       <div class="modal-content">
         <header class="modal-header">
-          <h3 id="keyModalTitle">¦¹¬¡°Ê»Ý¦s¨úª÷Æ_</h3>
-          <button type="button" class="modal-close" id="keyModalClose" aria-label="Ãö³¬">&times;</button>
+          <h3 id="keyModalTitle">æ­¤æ´»å‹•éœ€å­˜å–é‡‘é‘°</h3>
+          <button type="button" class="modal-close" id="keyModalClose" aria-label="é—œé–‰">&times;</button>
         </header>
         <div class="modal-body">
-          <p class="hint" id="keyModalDesc">½Ð¿é¤J¨t²Î´£¨Ñªº¦s¨úª÷Æ_¥H¶}±Ò¦¹¬¡°Ê¡C</p>
+          <p class="hint" id="keyModalDesc">è«‹è¼¸å…¥ç³»çµ±æä¾›çš„å­˜å–é‡‘é‘°ä»¥é–‹å•Ÿæ­¤æ´»å‹•ã€‚</p>
           <div class="form-group">
-            <label for="activityKeyInput">¦s¨úª÷Æ_</label>
-            <input type="password" id="activityKeyInput" placeholder="¿é¤Jª÷Æ_" autocomplete="off">
+            <label for="activityKeyInput">å­˜å–é‡‘é‘°</label>
+            <input type="password" id="activityKeyInput" placeholder="è¼¸å…¥é‡‘é‘°" autocomplete="off">
           </div>
           <p class="hint" id="keyModalHint"></p>
         </div>
         <footer class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="keyModalCancel">¨ú®ø</button>
-          <button type="button" class="btn btn-primary" id="keyModalConfirm">¶}±Ò¬¡°Ê</button>
+          <button type="button" class="btn btn-secondary" id="keyModalCancel">å–æ¶ˆ</button>
+          <button type="button" class="btn btn-primary" id="keyModalConfirm">é–‹å•Ÿæ´»å‹•</button>
         </footer>
       </div>
     </dialog>
 
-    <!-- ±K½XÂê Modal -->
+    <!-- å¯†ç¢¼éŽ– Modal -->
     <dialog id="pwdModal" class="modal">
       <div class="modal-content">
         <header class="modal-header">
-          <h3 id="pwdModalTitle">¦¹¤ÀÃþ¤wÂê©w</h3>
-          <button type="button" class="modal-close" id="pwdModalClose" aria-label="Ãö³¬">&times;</button>
+          <h3 id="pwdModalTitle">æ­¤åˆ†é¡žå·²éŽ–å®š</h3>
+          <button type="button" class="modal-close" id="pwdModalClose" aria-label="é—œé–‰">&times;</button>
         </header>
         <div class="modal-body">
-          <p class="hint" id="pwdModalDesc">½Ð¿é¤J¨t²Î´£¨Ñªº±K½X¥HÀËµø¦¹¤ÀÃþ¡C</p>
+          <p class="hint" id="pwdModalDesc">è«‹è¼¸å…¥ç³»çµ±æä¾›çš„å¯†ç¢¼ä»¥æª¢è¦–æ­¤åˆ†é¡žã€‚</p>
           <div class="form-group">
-            <label for="categoryPwdInput">¤ÀÃþ±K½X</label>
-            <input type="password" id="categoryPwdInput" placeholder="¿é¤J±K½X" autocomplete="off">
+            <label for="categoryPwdInput">åˆ†é¡žå¯†ç¢¼</label>
+            <input type="password" id="categoryPwdInput" placeholder="è¼¸å…¥å¯†ç¢¼" autocomplete="off">
           </div>
           <p class="hint" id="pwdModalHint"></p>
         </div>
         <footer class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="pwdModalCancel">¨ú®ø</button>
-          <button type="button" class="btn btn-primary" id="pwdModalConfirm">¸ÑÂê¬d¬Ý</button>
+          <button type="button" class="btn btn-secondary" id="pwdModalCancel">å–æ¶ˆ</button>
+          <button type="button" class="btn btn-primary" id="pwdModalConfirm">è§£éŽ–æŸ¥çœ‹</button>
         </footer>
       </div>
     </dialog>
 
-    <!-- ·j´M / ¿z¿ï¦C -->
+    <!-- æœå°‹ / ç¯©é¸åˆ— -->
     <div class="search-bar" id="searchBar" style="display:none;">
-      <label for="searchInput" class="visually-hidden">ÃöÁä¦r·j´M</label>
-      <input type="search" id="searchInput" placeholder="¿é¤J©m¦W¡B¯Z¯Åµ¥ÃöÁä¦r¿z¿ï" autocomplete="off">
+      <label for="searchInput" class="visually-hidden">é—œéµå­—æœå°‹</label>
+      <input type="search" id="searchInput" placeholder="è¼¸å…¥å§“åã€ç­ç´šç­‰é—œéµå­—ç¯©é¸" autocomplete="off">
       <span class="result-count" id="resultCount"></span>
       <div class="search-actions">
-        <button class="btn btn-secondary btn-sm" id="btnPrintRoster" style="display:none;" title="¶}±Ò¦C¦Lµøµ¡¡]¥i¥t¦s¬° PDF¡^">¦C¦L¦W¥U</button>
-        <button class="btn btn-secondary btn-sm" id="btnExportCsv" style="display:none;">¶×¥X¦W¥U</button>
+        <button class="btn btn-secondary btn-sm" id="btnPrintRoster" style="display:none;" title="é–‹å•Ÿåˆ—å°è¦–çª—ï¼ˆå¯å¦å­˜ç‚º PDFï¼‰">åˆ—å°åå†Š</button>
+        <button class="btn btn-secondary btn-sm" id="btnExportCsv" style="display:none;">åŒ¯å‡ºåå†Š</button>
       </div>
     </div>
 
-    <!-- ¸ê®Æªí®æ°Ï -->
+    <!-- è³‡æ–™è¡¨æ ¼å€ -->
     <section class="table-wrapper" id="tableWrapper" style="display:none;">
       <table id="dataTable" aria-live="polite">
         <thead id="tableHead"></thead>
         <tbody id="tableBody"></tbody>
       </table>
     </section>
-    <!-- ¤ô¥­±²¶b¡]ªí®æ¼e«×¶W¥X®ÉÅã¥Ü¡^ -->
+    <!-- æ°´å¹³æ²è»¸ï¼ˆè¡¨æ ¼å¯¬åº¦è¶…å‡ºæ™‚é¡¯ç¤ºï¼‰ -->
     <div class="table-hscroll" id="tableHscroll" style="display:none;" aria-hidden="true">
       <div class="table-hscroll-track" id="tableHscrollTrack"></div>
     </div>
-    <!-- ¦W³æ¥d¤ù°Ï¡]Äæ¦ì¤Ö©ó 5 ®É¨Ï¥Î¡^ -->
+    <!-- åå–®å¡ç‰‡å€ï¼ˆæ¬„ä½å°‘æ–¼ 5 æ™‚ä½¿ç”¨ï¼‰ -->
     <section class="card-list" id="cardList" style="display:none;" aria-live="polite"></section>
-    <p class="empty-state" id="emptyState" style="display:none;">¦¹¤ÀÃþ¼ÈµL¸ê®Æ¡C</p>
+    <p class="empty-state" id="emptyState" style="display:none;">æ­¤åˆ†é¡žæš«ç„¡è³‡æ–™ã€‚</p>
 
-    <!-- ­¶§À -->
+    <!-- é å°¾ -->
     <footer class="status-bar" id="statusBar" aria-live="polite">
       <span id="lastUpdated"></span>
     </footer>

@@ -497,8 +497,11 @@ function renderDataTable(fields, filteredRows) {
     row.forEach(cell => {
       const td = document.createElement('td');
       const span = document.createElement('span');
+      const text = String(cell ?? '');
       span.className = 'cell-text';
-      span.textContent = String(cell ?? '');
+      span.textContent = text;
+      // 15 字內維持單行，超過才自動換行（最多 3 行）
+      if (text.length <= 15) span.classList.add('cell-nowrap');
       td.appendChild(span);
       tr.appendChild(td);
     });
