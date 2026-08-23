@@ -15,12 +15,18 @@ let categoryValues = [];    // 分類欄位的所有唯一值
 let editingActivityId = null;
 let pendingProtected = {};  // 目前編輯中活動的分類密碼 { 分類: 密碼 }
 let pendingCategoryGroups = []; // 目前編輯中活動的分類組合 [{ name, members[] }]
-let selectedFields = [];    // 顯示欄位排序清單（勾選 + 順序）
+let selectedFields = [];    // 全部欄位的排列順序（含未勾選）
+let activeFields = new Set(); // 勾選要顯示的欄位集合
 let defaultSortField = '';  // 預設排序欄位（需為勾選的顯示欄位之一）
 let defaultSortDir = 'asc'; // 預設排序方向：asc / desc
 
 // CSS.escape fallback（用於 selector 建構）
 const cssEsc = typeof CSS !== 'undefined' && CSS.escape ? s => CSS.escape(s) : s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
+
+// 回傳「勾選且排序後」的顯示欄位清單（供儲存用）
+function buildSelectedFields() {
+  return selectedFields.filter(f => activeFields.has(f));
+}
 
 // DOM
 const loginSection = document.getElementById('loginSection');
@@ -95,15 +101,15 @@ function init() {
   document.getElementById('btnClearFields').addEventListener('click', clearFields);
 }
 
-// 一鍵全選顯示欄位（依 availableFields 順序）
+// 一鍵全選顯示欄位
 function selectAllFields() {
-  selectedFields = [...availableFields];
+  activeFields = new Set(selectedFields);
   renderFieldSortList();
 }
 
 // 一鍵清除顯示欄位
 function clearFields() {
-  selectedFields = [];
+  activeFields = new Set();
   renderFieldSortList();
 }
 
@@ -385,14 +391,16 @@ function openModal(actId = null) {
       pendingCategoryGroups = (act.categoryGroups || []).map(g => ({ name: g.name, members: [...(g.members || [])] }));
       defaultSortField = act.defaultSortField || '';
       defaultSortDir = act.defaultSortDir || 'asc';
-      // 顯示欄位：依活動既有的 displayFields 順序建立選取與排序
+      // 顯示欄位：依活動既有的 displayFields 順序建立排序清單與勾選集合
       const existing = act.displayFields || [];
       selectedFields = existing.length ? [...existing] : [];
+      activeFields = new Set(existing);
       handleTestConnection(true).then(() => {
         actCategoryField.value = act.categoryField || '';
-        // 若活動無顯示欄位，預設全選；否則保留既有選取（renderFieldSortList 會補上未勾選的新欄位）
+        // 若活動無顯示欄位，預設全選；否則保留既有選取
         if (existing.length === 0) {
           selectedFields = [...availableFields];
+          activeFields = new Set(availableFields);
         }
         renderFieldSortList();
         updateCategoryValues();
@@ -427,6 +435,7 @@ function resetModalForm() {
   pendingProtected = {};
   pendingCategoryGroups = [];
   selectedFields = [];
+  activeFields = new Set();
   defaultSortField = '';
   defaultSortDir = 'asc';
   connectionHint.textContent = '';
@@ -470,15 +479,15 @@ function renderFieldSortList() {
     return;
   }
 
-  // 確保 selectedFields 與 availableFields 同步（保留既有選取與順序）
-  const selectedSet = new Set(selectedFields);
-  selectedFields = selectedFields.filter(f => availableFields.includes(f));
+  // 確保 selectedFields 包含所有可用欄位（保留既有順序，新欄位追加到末尾）
+  const availSet = new Set(availableFields);
+  selectedFields = selectedFields.filter(f => availSet.has(f));
   availableFields.forEach(f => { if (!selectedFields.includes(f)) selectedFields.push(f); });
 
   fieldSortListEl.innerHTML = selectedFields.map((f, i) => `
-    <li class="field-sort-item" data-field="${escapeHtml(f)}">
+    <li class="field-sort-item ${activeFields.has(f) ? 'active' : 'inactive'}" data-field="${escapeHtml(f)}">
       <label>
-        <input type="checkbox" data-check="${escapeHtml(f)}" ${selectedSet.has(f) ? 'checked' : ''}>
+        <input type="checkbox" data-check="${escapeHtml(f)}" ${activeFields.has(f) ? 'checked' : ''}>
         ${escapeHtml(f)}
       </label>
       <div class="sort-btns">
@@ -488,22 +497,21 @@ function renderFieldSortList() {
     </li>
   `).join('');
 
-  // 勾選切換：加入/移出顯示欄位
+  // 勾選切換：僅更新 activeFields（不動 selectedFields 順序）
   fieldSortListEl.querySelectorAll('[data-check]').forEach(cb =>
     cb.addEventListener('change', () => {
       const f = cb.dataset.check;
-      const idx = selectedFields.indexOf(f);
       if (cb.checked) {
-        if (idx < 0) selectedFields.push(f);
+        activeFields.add(f);
       } else {
-        if (idx >= 0) selectedFields.splice(idx, 1);
+        activeFields.delete(f);
       }
       updateFieldSortHint();
       renderSortFieldOptions();
     })
   );
 
-  // 上移 / 下移
+  // 上移 / 下移（所有欄位皆可調整順序，不受勾選影響）
   fieldSortListEl.querySelectorAll('[data-up]').forEach(btn =>
     btn.addEventListener('click', () => moveField(btn.dataset.up, -1))
   );
@@ -518,10 +526,7 @@ function renderFieldSortList() {
 // 渲染「預設排序欄位」下拉（僅列出勾選的顯示欄位）
 function renderSortFieldOptions() {
   if (!actDefaultSortField) return;
-  const checked = selectedFields.filter(f => {
-    const cb = fieldSortListEl.querySelector(`[data-check="${cssEsc(f)}"]`);
-    return cb && cb.checked;
-  });
+  const checked = selectedFields.filter(f => activeFields.has(f));
 
   const dir = actDefaultSortDir.value === 'desc' ? 'desc' : 'asc';
   actDefaultSortDir.value = defaultSortDir === 'desc' ? 'desc' : 'asc';
@@ -550,12 +555,9 @@ function moveField(field, dir) {
 
 // 更新排序提示
 function updateFieldSortHint() {
-  const checked = selectedFields.filter(f => {
-    const cb = fieldSortListEl.querySelector(`[data-check="${cssEsc(f)}"]`);
-    return cb && cb.checked;
-  });
+  const checked = selectedFields.filter(f => activeFields.has(f));
   fieldSortHintEl.textContent = checked.length
-    ? `已選 ${checked.length} 個欄位：${checked.join(' → ')}`
+    ? `已選 ${checked.length} / 共 ${availableFields.length} 個欄位：${checked.join(' → ')}`
     : '尚未勾選任何欄位';
 }
 
@@ -754,10 +756,7 @@ async function handleSaveActivity() {
   const sheetUrl = actSheetUrlInput.value.trim();
   const sheetName = actSheetNameInput.value.trim();
   const categoryField = actCategoryField.value;
-  const displayFields = selectedFields.filter(f => {
-    const cb = fieldSortListEl.querySelector(`[data-check="${cssEsc(f)}"]`);
-    return cb && cb.checked;
-  });
+  const displayFields = buildSelectedFields();
 
   if (!name) { alert('請輸入活動名稱'); return; }
   if (!sheetUrl) { alert('請輸入試算表網址'); return; }

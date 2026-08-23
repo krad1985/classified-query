@@ -522,6 +522,7 @@ tbody tr:hover td { background: var(--cinnabar-wash); }
   padding: .5rem .7rem;
   background: #fffdf8; border: var(--hairline); border-radius: var(--radius);
 }
+.field-sort-item.inactive { opacity: .45; background: var(--gray-100); }
 .field-sort-item label { margin: 0; font-weight: 400; font-size: .88rem; flex: 1; cursor: pointer; }
 .field-sort-item .sort-handle { color: var(--ink-faint); cursor: grab; user-select: none; font-size: .85rem; }
 .field-sort-item .sort-btns { display: flex; gap: .25rem; }
